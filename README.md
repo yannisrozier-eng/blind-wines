@@ -32,3 +32,31 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - Corrige `Identifier 'supabase' has already been declared`.
 - Le SDK CDN possède déjà le global `window.supabase`.
 - L'état applicatif utilise désormais `supabaseClient`, sans collision de nom.
+
+## V3.4.7 — Sélection obligatoire du mode
+- Nouveau parcours organisateur en 2 étapes.
+- Étape 1 : choix explicite entre À l'aveugle / Découverte / Challenge.
+- Aucun mode par défaut silencieux : impossible de créer une partie sans sélection.
+- Étape 2 : configuration des bouteilles.
+- Le mode choisi est rappelé clairement dans le lobby organisateur.
+
+## V3.4.8 — Trois modes réellement distincts
+
+### 🎯 À l'aveugle
+- Aucun indice.
+- Fiche de dégustation + prix/région/cépages.
+- Révélation classique.
+- Classement sommelier et badges de précision.
+
+### 🎓 Découverte
+- Vin connu dès le départ.
+- Parcours Œil → Nez → Bouche → Comprendre.
+- Mini-quiz et explications pédagogiques.
+- Aucun podium de connaissance ; bilan collectif et apprentissage.
+
+### 🥂 Challenge
+- Expérience séparée de Blind.
+- Indices progressifs et score potentiel visible.
+- 0 indice = x1 ; 1 indice = x0,75 ; 2 indices = x0,50.
+- Révélation dédiée Brut → Indices → Multiplicateur → Final.
+- Classement final dédié à la prise de risque, avec badges Champion du risque / Sans filet / Stratège.
