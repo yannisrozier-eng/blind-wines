@@ -1,0 +1,1911 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blind Wine</title>
+<meta name="theme-color" content="#6f243d">
+<meta name="description" content="Dégustation de vins à l'aveugle entre amis.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Blind Wine">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="./config.js"></script>
+<style>
+:root{
+  --bg:#f4f1ec;
+  --surface:#ffffff;
+  --surface-soft:#faf8f5;
+  --ink:#1e1d1b;
+  --muted:#77716b;
+  --line:#e8e1da;
+  --wine:#6f243d;
+  --wine-dark:#51182d;
+  --wine-soft:#f5e9ee;
+  --sand:#d9c2a4;
+  --sand-soft:#f3ece3;
+  --green:#48685b;
+  --shadow:0 18px 50px rgba(37,29,24,.07);
+  --shadow-soft:0 8px 24px rgba(37,29,24,.05);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(111,36,61,.055), transparent 34%),
+    linear-gradient(180deg,#f8f6f2 0%,var(--bg) 100%);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.01em;
+}
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.24) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.16),transparent 28%);
+}
+.app{
+  width:min(1120px,100%);
+  margin:auto;
+  padding:24px 16px 72px;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 2px 18px;
+}
+.logo{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.logo span{color:var(--wine)}
+.card{
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(232,225,218,.9);
+  border-radius:var(--radius);
+  padding:24px;
+  box-shadow:var(--shadow-soft);
+  margin-bottom:14px;
+  backdrop-filter:blur(12px);
+}
+.hero{
+  text-align:center;
+  padding:52px 24px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  position:relative;
+}
+.hero:after{
+  content:"";
+  position:absolute;
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  background:rgba(111,36,61,.045);
+  top:-110px;
+  right:-70px;
+}
+.emoji{font-size:52px;line-height:1}
+h1{
+  font-size:clamp(34px,6vw,58px);
+  line-height:1.02;
+  margin:14px 0 10px;
+  letter-spacing:-.045em;
+}
+h2{
+  font-size:23px;
+  margin:0 0 8px;
+  letter-spacing:-.03em;
+}
+h3{
+  font-size:16px;
+  margin:22px 0 10px;
+}
+p{line-height:1.55}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  appearance:none;
+  border:0;
+  border-radius:14px;
+  padding:13px 18px;
+  font-weight:800;
+  font-size:14px;
+  background:var(--wine);
+  color:white;
+  cursor:pointer;
+  box-shadow:0 7px 18px rgba(111,36,61,.16);
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.btn:hover{
+  transform:translateY(-1px);
+  background:var(--wine-dark);
+  box-shadow:0 10px 24px rgba(111,36,61,.2);
+}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.secondary{
+  background:var(--surface-soft);
+  color:var(--ink);
+  border:1px solid var(--line);
+  box-shadow:none;
+}
+.btn.secondary:hover{background:#f2eee9}
+.btn.gold{
+  background:#b89463;
+  color:white;
+  box-shadow:0 7px 18px rgba(184,148,99,.18);
+}
+.btn.green{background:var(--green)}
+input,select{
+  width:100%;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+  outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+input:focus,select:focus{
+  border-color:#a56c81;
+  box-shadow:0 0 0 4px rgba(111,36,61,.08);
+}
+select[multiple]{
+  padding:8px;
+  min-height:190px;
+  background:var(--surface-soft);
+}
+select[multiple] option{
+  padding:9px 10px;
+  margin:2px 0;
+  border-radius:8px;
+}
+label{
+  display:block;
+  font-size:12px;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin:13px 0 6px;
+  color:#5f5954;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  padding:7px 11px;
+  border-radius:999px;
+  background:var(--wine-soft);
+  color:var(--wine-dark);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.code{
+  font-size:38px;
+  letter-spacing:.16em;
+  font-weight:950;
+  color:var(--wine);
+  margin:8px 0 14px;
+}
+.notice,.success,.danger{
+  padding:14px 16px;
+  border-radius:15px;
+  border:1px solid transparent;
+}
+.notice{
+  background:var(--sand-soft);
+  border-color:#e8dac8;
+}
+.success{
+  background:#eaf2ee;
+  border-color:#d7e7df;
+}
+.danger{
+  background:#f6e7e5;
+  border-color:#efd4d1;
+}
+.chips{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.chip{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:999px;
+  padding:9px 12px;
+  cursor:pointer;
+  font-size:13px;
+  transition:.15s ease;
+}
+.chip:hover{border-color:#c4b6ac}
+.chip.sel{
+  background:var(--wine-soft);
+  border-color:#c99bb0;
+  color:var(--wine-dark);
+}
+.scale{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+}
+.scale.ten{grid-template-columns:repeat(10,1fr)}
+.scale button{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:12px;
+  padding:11px 4px;
+  cursor:pointer;
+  font-weight:800;
+  transition:.15s ease;
+}
+.scale button:hover{
+  border-color:#bfa8b3;
+  background:#fcf8fa;
+}
+.scale button.sel{
+  background:var(--wine);
+  border-color:var(--wine);
+  color:#fff;
+}
+.wine-row{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:18px;
+  margin-top:12px;
+  background:linear-gradient(180deg,#fff,var(--surface-soft));
+}
+.wine-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+.sticky{
+  position:sticky;
+  bottom:12px;
+  background:rgba(255,255,255,.9);
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(232,225,218,.9);
+  box-shadow:0 12px 35px rgba(31,25,22,.1);
+}
+table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+}
+th,td{
+  padding:12px 10px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+}
+th{
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+tr:last-child td{border-bottom:0}
+.podium{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:14px;
+}
+.stat{
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:linear-gradient(180deg,#fff,#fbf8f5);
+  box-shadow:var(--shadow-soft);
+}
+.stat strong{
+  display:block;
+  font-size:28px;
+  letter-spacing:-.035em;
+  margin-top:4px;
+}
+.region-card{
+  border:1px solid var(--line);
+  border-radius:17px;
+  padding:16px;
+  background:linear-gradient(180deg,#fff,#faf7f4);
+}
+.region-card h4{margin:0 0 8px}
+.region-card .grapes{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.55;
+}
+.scorebox{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+.scoreitem{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px;
+  background:#fff;
+  text-align:center;
+}
+.scoreitem b{
+  display:block;
+  font-size:24px;
+  margin-top:2px;
+}
+.recap{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  margin-top:12px;
+  background:#fff;
+}
+.recap .truth{
+  background:var(--surface-soft);
+  border-radius:13px;
+  padding:12px;
+  margin-top:10px;
+}
+.center{text-align:center}
+#qrcode canvas,#qrcode img{
+  border-radius:16px;
+  padding:10px;
+  background:#fff;
+  box-shadow:var(--shadow-soft);
+}
+@media(max-width:700px){
+  .app{padding:16px 12px 56px}
+  .card{padding:18px;border-radius:18px}
+  .hero{padding:38px 18px}
+  .podium,.scorebox{grid-template-columns:1fr}
+  .scale.ten{grid-template-columns:repeat(5,1fr)}
+  h1{font-size:38px}
+  .code{font-size:32px}
+  table{font-size:13px}
+}
+
+.config-simple{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.multi-select-box{
+  background:var(--surface-soft);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:8px;
+}
+.multi-select-box select{
+  border:0;
+  box-shadow:none;
+  background:transparent;
+  min-height:170px;
+}
+.multi-select-box select:focus{box-shadow:none}
+@media(max-width:700px){
+  .config-simple{grid-template-columns:1fr}
+}
+
+.grape-picker{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface-soft);
+  overflow:hidden;
+}
+.grape-picker summary{
+  list-style:none;
+  cursor:pointer;
+  padding:13px 14px;
+  font-weight:800;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+.grape-picker summary::-webkit-details-marker{display:none}
+.grape-picker-body{
+  border-top:1px solid var(--line);
+  max-height:320px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  background:#fff;
+}
+.grape-option{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:12px 14px;
+  border-bottom:1px solid #f0ebe6;
+  cursor:pointer;
+}
+.grape-option:last-child{border-bottom:0}
+.grape-option input{
+  width:22px;
+  height:22px;
+  margin:0;
+  accent-color:var(--wine);
+  flex:0 0 auto;
+}
+.grape-option span{
+  font-size:15px;
+  font-weight:650;
+}
+.player-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:7px 8px 7px 12px;
+}
+.player-chip .kick{
+  border:0;
+  background:#f5e8e8;
+  color:#8b3434;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  cursor:pointer;
+  font-weight:900;
+}
+.stats-bars{display:grid;gap:6px;margin-top:12px}
+.stats-line{display:grid;grid-template-columns:24px 1fr 28px;gap:8px;align-items:center;font-size:12px}
+.stats-track{height:9px;border-radius:999px;background:#eee8e1;overflow:hidden}
+.stats-fill{height:100%;background:var(--wine);border-radius:999px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.stats-kpi{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.stats-kpi b{display:block;font-size:22px;margin-top:4px}
+.install-hint{
+  padding:12px 14px;
+  border-radius:14px;
+  background:var(--wine-soft);
+  color:var(--wine-dark);
+  font-size:13px;
+  margin-top:12px;
+}
+@media(max-width:700px){
+  .stats-grid{grid-template-columns:1fr}
+}
+
+
+.net-banner{position:fixed;z-index:1000;left:50%;transform:translateX(-50%);top:10px;padding:9px 14px;border-radius:999px;background:#8b3434;color:#fff;font-size:12px;font-weight:850;box-shadow:var(--shadow);display:none}
+.net-banner.show{display:block}
+
+
+.account-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.avatar{
+ width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+ background:var(--wine-soft);color:var(--wine);font-weight:900;border:1px solid #ead5dd
+}
+.auth-shell{max-width:620px;margin:7vh auto}
+.auth-mark{font-size:54px;margin-bottom:8px}
+.history-list{display:grid;gap:12px}
+.history-item{
+ display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;
+ padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff
+}
+.history-item h3{margin:0 0 5px}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.metric-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.metric-card strong{display:block;font-size:24px;margin-top:5px}
+.profile-name{display:flex;align-items:center;gap:12px}
+@media(max-width:700px){
+ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .history-item{grid-template-columns:1fr}
+}
+
+
+/* V3.2 — reveal experience */
+.reveal-stage{
+ position:fixed;inset:0;z-index:1500;display:grid;place-items:center;
+ min-height:100dvh;padding:24px;overflow:hidden;
+ background:
+   radial-gradient(circle at 50% 38%,rgba(111,36,61,.18),transparent 34%),
+   linear-gradient(145deg,#1f1016,#471629 55%,#6f243d);
+ color:#fff;text-align:center;
+}
+.reveal-stage::before,.reveal-stage::after{
+ content:"";position:absolute;border-radius:50%;filter:blur(2px);opacity:.22;
+ background:#fff;animation:revealFloat 4s ease-in-out infinite alternate;
+}
+.reveal-stage::before{width:220px;height:220px;left:-70px;top:8%}
+.reveal-stage::after{width:320px;height:320px;right:-130px;bottom:-60px;animation-delay:.5s}
+.reveal-count{
+ font-size:clamp(92px,28vw,220px);font-weight:950;line-height:.85;
+ letter-spacing:-.06em;text-shadow:0 18px 50px rgba(0,0,0,.35);
+ animation:revealPop .72s cubic-bezier(.2,.8,.2,1);
+}
+.reveal-kicker{font-weight:900;letter-spacing:.18em;text-transform:uppercase;opacity:.78}
+.reveal-bottle-icon{font-size:86px;animation:revealPop .8s cubic-bezier(.2,.8,.2,1)}
+.reveal-wine-name{font-size:clamp(34px,8vw,72px);line-height:1.02;margin:12px 0 6px;max-width:900px}
+.reveal-price{font-size:clamp(34px,9vw,64px);font-weight:950;color:#f0d7a8;margin-top:10px}
+.reveal-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.reveal-particles i{position:absolute;width:9px;height:9px;border-radius:50%;background:#f0d7a8;opacity:.75;animation:particleFall 2.8s linear infinite}
+.reveal-particles i:nth-child(1){left:8%;animation-delay:.1s}.reveal-particles i:nth-child(2){left:18%;animation-delay:1.1s}
+.reveal-particles i:nth-child(3){left:31%;animation-delay:.45s}.reveal-particles i:nth-child(4){left:44%;animation-delay:1.6s}
+.reveal-particles i:nth-child(5){left:58%;animation-delay:.8s}.reveal-particles i:nth-child(6){left:69%;animation-delay:1.9s}
+.reveal-particles i:nth-child(7){left:81%;animation-delay:.25s}.reveal-particles i:nth-child(8){left:92%;animation-delay:1.35s}
+@keyframes revealPop{0%{transform:scale(.55);opacity:0}65%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes revealFloat{from{transform:translateY(-16px) scale(.95)}to{transform:translateY(20px) scale(1.05)}}
+@keyframes particleFall{0%{transform:translateY(-8vh) rotate(0);opacity:0}15%{opacity:.8}100%{transform:translateY(108vh) rotate(240deg);opacity:0}}
+.reveal-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.reveal-summary .stat{background:var(--surface-soft)}
+.round-awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.round-award{padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--surface-soft)}
+.round-award .award-icon{font-size:28px}.round-award strong{display:block;margin-top:5px}
+.live-ranking{display:grid;gap:8px;margin-top:12px}
+.live-rank-row{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.live-rank-row.me{border-color:#c99bb0;background:var(--wine-soft)}
+.live-rank-pos{font-size:20px;font-weight:950;text-align:center}
+.live-rank-score{font-weight:950;color:var(--wine)}
+@media(max-width:700px){.reveal-summary,.round-awards{grid-template-columns:1fr}}
+
+
+.mode-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:16px 0}
+.mode-card{display:flex;flex-direction:column;gap:8px;align-items:flex-start;text-align:left;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--card);color:inherit}
+.mode-card.selected{outline:3px solid rgba(255,255,255,.18);border-color:var(--accent)}
+.mode-card small{color:var(--muted);line-height:1.4}.learning-card{padding:16px;border-left:4px solid var(--accent);background:rgba(255,255,255,.04);border-radius:14px;margin:14px 0}
+@media(max-width:700px){.mode-grid{grid-template-columns:1fr}}
+
+.discovery-progress{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:16px 0 20px}
+.discovery-progress span{height:6px;border-radius:999px;background:rgba(255,255,255,.10)}
+.discovery-progress span.on{background:var(--accent)}
+.discovery-stage{animation:revealPop .25s ease both}
+.discovery-stage h2{margin-top:8px}
+.edu-tip{padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.05);margin:14px 0;line-height:1.5}
+.edu-tip strong{display:block;margin-bottom:5px}
+.quiz-options{display:grid;gap:10px;margin:16px 0}
+.quiz-option{padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:inherit;text-align:left;font-weight:700;cursor:pointer}
+.quiz-option.selected{border-color:var(--accent);outline:2px solid rgba(255,255,255,.12)}
+.quiz-option.correct{outline:2px solid rgba(93,214,140,.55)}
+.quiz-option.wrong{outline:2px solid rgba(255,100,100,.55)}
+.discovery-nav{display:flex;gap:10px;margin-top:18px}
+.discovery-nav .btn{flex:1}
+.discovery-summary{display:grid;gap:10px}
+.discovery-summary .row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border)}
+@media(max-width:700px){.discovery-nav{flex-direction:column-reverse}}
+</style></head>
+<body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
+<script>
+
+const CONFIG={url:SUPABASE_URL,key:SUPABASE_PUBLISHABLE_KEY};
+const SESSION_KEY="blindwine_v27_session";
+let supabase=null,user=null,profile=null,game=null,role=null,player=null,channel=null;
+let wineCache=null;
+const answerCache=new Map();
+let routeSeq=0;
+
+const TYPES={rose:"Rosé",white:"Blanc",red:"Rouge"};
+const ICON={rose:"🌸",white:"🥂",red:"🍷"};
+const AROMAS={
+  rose:["Fruits rouges","Agrumes","Fruits exotiques","Floral","Minéral","Épicé","Végétal"],
+  white:["Agrumes","Fruits blancs","Fruits exotiques","Floral","Minéral","Boisé","Végétal"],
+  red:["Fruits rouges","Fruits noirs","Épices","Floral","Minéral","Boisé","Végétal","Cuir / tabac"]
+};
+
+const REGION_CATALOG=[
+ {id:"france",label:"France",level:"country",parent:null},
+ {id:"france_sud",label:"Sud de la France",level:"macro",parent:"france"},
+ {id:"provence",label:"Provence",level:"region",parent:"france_sud"},
+ {id:"cotes_provence",label:"Côtes de Provence",level:"appellation",parent:"provence"},
+ {id:"coteaux_aix",label:"Coteaux d’Aix-en-Provence",level:"appellation",parent:"provence"},
+ {id:"bandol",label:"Bandol",level:"appellation",parent:"provence"},
+ {id:"languedoc",label:"Languedoc-Roussillon",level:"region",parent:"france_sud"},
+ {id:"pic_saint_loup",label:"Pic Saint-Loup",level:"appellation",parent:"languedoc"},
+ {id:"corbieres",label:"Corbières",level:"appellation",parent:"languedoc"},
+ {id:"minervois",label:"Minervois",level:"appellation",parent:"languedoc"},
+ {id:"rhone",label:"Vallée du Rhône",level:"region",parent:"france_sud"},
+ {id:"rhone_nord",label:"Rhône Nord",level:"subregion",parent:"rhone"},
+ {id:"rhone_sud",label:"Rhône Sud",level:"subregion",parent:"rhone"},
+ {id:"cotes_rhone",label:"Côtes-du-Rhône",level:"appellation",parent:"rhone_sud"},
+ {id:"chateauneuf",label:"Châteauneuf-du-Pape",level:"appellation",parent:"rhone_sud"},
+ {id:"gigondas",label:"Gigondas",level:"appellation",parent:"rhone_sud"},
+ {id:"crozes",label:"Crozes-Hermitage",level:"appellation",parent:"rhone_nord"},
+ {id:"hermitage",label:"Hermitage",level:"appellation",parent:"rhone_nord"},
+ {id:"condrieu",label:"Condrieu",level:"appellation",parent:"rhone_nord"},
+ {id:"france_ouest",label:"Ouest de la France",level:"macro",parent:"france"},
+ {id:"bordeaux",label:"Bordeaux",level:"region",parent:"france_ouest"},
+ {id:"medoc",label:"Médoc",level:"appellation",parent:"bordeaux"},
+ {id:"margaux",label:"Margaux",level:"appellation",parent:"bordeaux"},
+ {id:"pauillac",label:"Pauillac",level:"appellation",parent:"bordeaux"},
+ {id:"saint_emilion",label:"Saint-Émilion",level:"appellation",parent:"bordeaux"},
+ {id:"pomerol",label:"Pomerol",level:"appellation",parent:"bordeaux"},
+ {id:"pessac",label:"Pessac-Léognan",level:"appellation",parent:"bordeaux"},
+ {id:"sauternes",label:"Sauternes",level:"appellation",parent:"bordeaux"},
+ {id:"loire",label:"Vallée de la Loire",level:"region",parent:"france_ouest"},
+ {id:"sancerre",label:"Sancerre",level:"appellation",parent:"loire"},
+ {id:"pouilly_fume",label:"Pouilly-Fumé",level:"appellation",parent:"loire"},
+ {id:"muscadet",label:"Muscadet",level:"appellation",parent:"loire"},
+ {id:"chinon",label:"Chinon",level:"appellation",parent:"loire"},
+ {id:"vouvray",label:"Vouvray",level:"appellation",parent:"loire"},
+ {id:"france_est",label:"Est de la France",level:"macro",parent:"france"},
+ {id:"bourgogne",label:"Bourgogne",level:"region",parent:"france_est"},
+ {id:"chablis",label:"Chablis",level:"appellation",parent:"bourgogne"},
+ {id:"cote_nuits",label:"Côte de Nuits",level:"subregion",parent:"bourgogne"},
+ {id:"cote_beaune",label:"Côte de Beaune",level:"subregion",parent:"bourgogne"},
+ {id:"meursault",label:"Meursault",level:"appellation",parent:"cote_beaune"},
+ {id:"gevrey",label:"Gevrey-Chambertin",level:"appellation",parent:"cote_nuits"},
+ {id:"beaujolais",label:"Beaujolais",level:"region",parent:"france_est"},
+ {id:"morgon",label:"Morgon",level:"appellation",parent:"beaujolais"},
+ {id:"fleurie",label:"Fleurie",level:"appellation",parent:"beaujolais"},
+ {id:"alsace",label:"Alsace",level:"region",parent:"france_est"},
+ {id:"jura",label:"Jura",level:"region",parent:"france_est"},
+ {id:"champagne",label:"Champagne",level:"region",parent:"france_est"},
+ {id:"sud_ouest",label:"Sud-Ouest",level:"region",parent:"france_sud"},
+ {id:"cahors",label:"Cahors",level:"appellation",parent:"sud_ouest"},
+ {id:"madiran",label:"Madiran",level:"appellation",parent:"sud_ouest"},
+
+ {id:"italy",label:"Italie",level:"country",parent:null},
+ {id:"tuscany",label:"Toscane",level:"region",parent:"italy"},
+ {id:"chianti",label:"Chianti / Chianti Classico",level:"appellation",parent:"tuscany"},
+ {id:"brunello",label:"Brunello di Montalcino",level:"appellation",parent:"tuscany"},
+ {id:"piedmont",label:"Piémont",level:"region",parent:"italy"},
+ {id:"barolo",label:"Barolo",level:"appellation",parent:"piedmont"},
+ {id:"barbaresco",label:"Barbaresco",level:"appellation",parent:"piedmont"},
+ {id:"veneto",label:"Vénétie",level:"region",parent:"italy"},
+ {id:"valpolicella",label:"Valpolicella / Amarone",level:"appellation",parent:"veneto"},
+ {id:"sicily",label:"Sicile",level:"region",parent:"italy"},
+
+ {id:"spain",label:"Espagne",level:"country",parent:null},
+ {id:"rioja",label:"Rioja",level:"region",parent:"spain"},
+ {id:"ribera",label:"Ribera del Duero",level:"region",parent:"spain"},
+ {id:"priorat",label:"Priorat",level:"region",parent:"spain"},
+ {id:"rias_baixas",label:"Rías Baixas",level:"region",parent:"spain"},
+ {id:"cava",label:"Cava",level:"region",parent:"spain"},
+
+ {id:"portugal",label:"Portugal",level:"country",parent:null},
+ {id:"douro",label:"Douro",level:"region",parent:"portugal"},
+ {id:"vinho_verde",label:"Vinho Verde",level:"region",parent:"portugal"},
+ {id:"alentejo",label:"Alentejo",level:"region",parent:"portugal"},
+
+ {id:"germany",label:"Allemagne",level:"country",parent:null},
+ {id:"mosel",label:"Moselle",level:"region",parent:"germany"},
+ {id:"rheingau",label:"Rheingau",level:"region",parent:"germany"},
+
+ {id:"austria",label:"Autriche",level:"country",parent:null},
+ {id:"wachau",label:"Wachau",level:"region",parent:"austria"},
+
+ {id:"usa",label:"États-Unis",level:"country",parent:null},
+ {id:"napa",label:"Napa Valley",level:"region",parent:"usa"},
+ {id:"sonoma",label:"Sonoma",level:"region",parent:"usa"},
+ {id:"oregon",label:"Oregon / Willamette Valley",level:"region",parent:"usa"},
+
+ {id:"argentina",label:"Argentine",level:"country",parent:null},
+ {id:"mendoza",label:"Mendoza",level:"region",parent:"argentina"},
+
+ {id:"chile",label:"Chili",level:"country",parent:null},
+ {id:"maipo",label:"Maipo Valley",level:"region",parent:"chile"},
+ {id:"casablanca",label:"Casablanca Valley",level:"region",parent:"chile"},
+
+ {id:"australia",label:"Australie",level:"country",parent:null},
+ {id:"barossa",label:"Barossa Valley",level:"region",parent:"australia"},
+ {id:"margaret_river",label:"Margaret River",level:"region",parent:"australia"},
+
+ {id:"new_zealand",label:"Nouvelle-Zélande",level:"country",parent:null},
+ {id:"marlborough",label:"Marlborough",level:"region",parent:"new_zealand"},
+ {id:"central_otago",label:"Central Otago",level:"region",parent:"new_zealand"},
+
+ {id:"south_africa",label:"Afrique du Sud",level:"country",parent:null},
+ {id:"stellenbosch",label:"Stellenbosch",level:"region",parent:"south_africa"}
+];
+
+const GRAPES=[
+ "Albariño","Aligoté","Barbera","Cabernet Franc","Cabernet Sauvignon","Carignan","Carmenère",
+ "Chardonnay","Chenin blanc","Cinsault","Colombard","Corvina","Gamay","Garganega","Gewurztraminer",
+ "Grenache","Grenache blanc","Grüner Veltliner","Gros Manseng","Malbec","Marsanne","Melon de Bourgogne",
+ "Merlot","Meunier","Monastrell / Mourvèdre","Mourvèdre","Müller-Thurgau","Nebbiolo","Négrette",
+ "Nero d’Avola","Petit Manseng","Petit Verdot","Picpoul","Pinot blanc","Pinot gris","Pinot noir",
+ "Pinotage","Poulsard","Riesling","Rolle / Vermentino","Roussanne","Sangiovese","Sauvignon blanc",
+ "Savagnin","Sémillon","Syrah / Shiraz","Syrah","Tannat","Tempranillo","Tibouren","Touriga Nacional",
+ "Trousseau","Verdicchio","Viognier","Zinfandel"
+];
+
+const REGION_GRAPES={
+ provence:["Grenache","Cinsault","Mourvèdre","Syrah","Tibouren","Rolle / Vermentino"],
+ languedoc:["Grenache","Syrah","Mourvèdre","Carignan","Cinsault","Picpoul"],
+ rhone_nord:["Syrah","Viognier","Marsanne","Roussanne"],
+ rhone_sud:["Grenache","Syrah","Mourvèdre","Cinsault","Roussanne"],
+ bordeaux:["Merlot","Cabernet Sauvignon","Cabernet Franc","Sauvignon blanc","Sémillon"],
+ loire:["Sauvignon blanc","Chenin blanc","Cabernet Franc","Melon de Bourgogne","Gamay"],
+ bourgogne:["Chardonnay","Pinot noir","Aligoté"],
+ beaujolais:["Gamay"],
+ alsace:["Riesling","Gewurztraminer","Pinot gris","Pinot blanc","Pinot noir"],
+ jura:["Savagnin","Chardonnay","Poulsard","Trousseau","Pinot noir"],
+ champagne:["Chardonnay","Pinot noir","Meunier"],
+ sud_ouest:["Malbec","Tannat","Négrette","Colombard","Gros Manseng","Petit Manseng"]
+};
+
+function esc(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function toast(msg){ alert(String(msg||"Une erreur est survenue.")); }
+function makeCode(){
+  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out=""; crypto.getRandomValues(new Uint32Array(5)).forEach(n=>out+=chars[n%chars.length]);
+  return out;
+}
+function saveSession(){
+  if(!game||!role)return;
+  localStorage.setItem(SESSION_KEY,JSON.stringify({gameId:game.id,role}));
+}
+function clearSession(){
+  localStorage.removeItem(SESSION_KEY);
+  game=role=player=null;
+  if(channel&&supabase){supabase.removeChannel(channel);channel=null;}
+}
+function regionObj(id){return REGION_CATALOG.find(r=>r.id===id)}
+function regionAncestors(id){
+ let out=[],cur=regionObj(id);
+ while(cur){out.push(cur.id);cur=cur.parent?regionObj(cur.parent):null}
+ return out;
+}
+function regionScore(guess,real){
+ if(!guess||!real)return 0;
+ if(guess===real)return 3;
+ const ga=regionAncestors(guess),ra=regionAncestors(real);
+ if(ga.includes(real)||ra.includes(guess)){
+   const g=regionObj(guess),r=regionObj(real);
+   if(["macro","country"].includes(g?.level)||["macro","country"].includes(r?.level))return 1;
+   return 2;
+ }
+ const shared=ga.find(x=>ra.includes(x));
+ if(shared){
+   const lvl=regionObj(shared)?.level;
+   if(lvl==="country"||lvl==="macro")return 1;
+   return 2;
+ }
+ return 0;
+}
+function parseGrapes(v){
+ if(Array.isArray(v))return v.filter(Boolean);
+ const text=String(v||"").trim();
+ if(!text)return [];
+ // Compatibilité avec les anciennes V2.x qui stockaient un assemblage dans une chaîne
+ // séparée par " / ", y compris lorsque le nom du cépage contient lui-même un slash.
+ const memo=new Map();
+ function walk(rest){
+   if(memo.has(rest))return memo.get(rest);
+   if(!rest){memo.set(rest,[]);return []}
+   const exact=GRAPES.find(g=>g===rest);
+   if(exact){const r=[exact];memo.set(rest,r);return r}
+   for(const g of [...GRAPES].sort((a,b)=>b.length-a.length)){
+     const prefix=g+" / ";
+     if(rest.startsWith(prefix)){
+       const tail=walk(rest.slice(prefix.length));
+       if(tail){const r=[g,...tail];memo.set(rest,r);return r}
+     }
+   }
+   memo.set(rest,null);return null;
+ }
+ return walk(text)||[text];
+}
+function canonicalGrape(g){
+ const x=String(g||"").trim().toLowerCase();
+ const aliases={
+   "syrah / shiraz":"syrah","syrah":"syrah",
+   "monastrell / mourvèdre":"mourvedre","mourvèdre":"mourvedre",
+   "rolle / vermentino":"vermentino"
+ };
+ return aliases[x]||x.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+function grapeScore(guess,real){
+ const g=[...new Set(parseGrapes(guess).map(canonicalGrape))];
+ const r=[...new Set(parseGrapes(real).map(canonicalGrape))];
+ if(!g.length||!r.length)return 0;
+ const hits=g.filter(x=>r.includes(x)).length;
+ const wrong=g.filter(x=>!r.includes(x)).length;
+ if(!hits)return 0;
+ if(hits===r.length && wrong===0)return 3;
+ let base=Math.min(2,hits);
+ if(r.length===1&&hits===1)base=3;
+ return Math.max(0,base-Math.min(wrong,base));
+}
+function answerGrapes(a){
+ return Array.isArray(a?.grapes)&&a.grapes.length?a.grapes:parseGrapes(a?.grape);
+}
+function priceScore(guess,real){
+ guess=Number(guess);real=Number(real);
+ if(!isFinite(guess)||!isFinite(real)||real<=0)return 0;
+ const pct=Math.abs(guess-real)/real;
+ if(pct<=.10)return 5;
+ if(pct<=.20)return 4;
+ if(pct<=.35)return 3;
+ if(pct<=.50)return 2;
+ if(pct<=.75)return 1;
+ return 0;
+}
+function scoreParts(a,w,mode=game?.experience_mode||"blind"){
+ const rawPrice=priceScore(a.price,w.price);
+ const rawRegion=regionScore(a.region,w.region);
+ const rawGrape=grapeScore(answerGrapes(a),w.grapes??w.grape);
+ const factor=mode==="challenge"?challengeFactor(a):1;
+ const eff=x=>Math.round(x*factor*100)/100;
+ return {
+   factor,
+   rawPrice,rawRegion,rawGrape,
+   price:eff(rawPrice),region:eff(rawRegion),grape:eff(rawGrape),
+   total:eff(rawPrice+rawRegion+rawGrape)
+ };
+}
+function knowledgeScore(a,w,mode=game?.experience_mode||"blind"){
+ return scoreParts(a,w,mode).total;
+}
+function regionLabel(id){return regionObj(id)?.label||id||""}
+function typeOptions(selected=""){
+ return [["rose","Rosé 🌸"],["white","Blanc 🥂"],["red","Rouge 🍷"]]
+  .map(([v,l])=>`<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
+}
+function groupedRegionOptions(selected=""){
+ const countries=[
+  ["France","france"],["Italie","italy"],["Espagne","spain"],["Portugal","portugal"],
+  ["Allemagne","germany"],["Autriche","austria"],["États-Unis","usa"],["Argentine","argentina"],
+  ["Chili","chile"],["Australie","australia"],["Nouvelle-Zélande","new_zealand"],["Afrique du Sud","south_africa"]
+ ];
+ return `<option value="">Choisir une région / appellation…</option>`+
+ countries.map(([label,cid])=>{
+   const ids=REGION_CATALOG.filter(r=>regionAncestors(r.id).includes(cid) && r.id!==cid);
+   return `<optgroup label="${esc(label)}">${ids.map(r=>`<option value="${r.id}" ${selected===r.id?"selected":""}>${esc(r.label)}</option>`).join("")}</optgroup>`;
+ }).join("");
+}
+function selectedValues(el){return Array.from(el.selectedOptions).map(o=>o.value)}
+function grapePickerHtml(id,selected,mode){
+ const chosen=parseGrapes(selected);
+ const count=chosen.length;
+ return `<details class="grape-picker" data-picker="${esc(id)}"><summary><span>${count?`${count} cépage${count>1?"s":""} sélectionné${count>1?"s":""}`:"Choisir les cépages"}</span><span>⌄</span></summary>
+ <div class=grape-picker-body>${GRAPES.map(g=>`<label class=grape-option><input type=checkbox value="${esc(g)}" ${chosen.includes(g)?"checked":""} onchange="handleGrapeCheck('${mode}','${esc(id)}',this)"><span>${esc(g)}</span></label>`).join("")}</div></details>`;
+}
+async function handleGrapeCheck(mode,id,input){
+ const box=input.closest(".grape-picker");
+ const values=Array.from(box.querySelectorAll("input[type=checkbox]:checked")).map(x=>x.value);
+ const summary=box.querySelector("summary span:first-child");
+ summary.textContent=values.length?`${values.length} cépage${values.length>1?"s":""} sélectionné${values.length>1?"s":""}`:"Choisir les cépages";
+ if(mode==="host")await updateWineGrapes(id,values);
+ else await setPlayerGrapes(id,values);
+}
+function guideHtml(){
+ return `<div class=card><h2>🗺️ Aide régions & cépages</h2><p class=muted>Repère rapide pour t'aider pendant la dégustation.</p><div class=grid>${
+   REGION_CATALOG.filter(r=>["region","subregion"].includes(r.level)).map(r=>{
+     const grapes=REGION_GRAPES[r.id]||REGION_GRAPES[r.parent]||[];
+     return `<div class=region-card><h4>${esc(r.label)}</h4><div class=grapes>${grapes.map(g=>"• "+esc(g)).join("<br>")||"Voir les appellations associées"}</div></div>`;
+   }).join("")
+ }</div></div>`;
+}
+function qrForGame(){
+ const joinUrl=location.origin+location.pathname+"?game="+encodeURIComponent(game.code);
+ const el=document.getElementById("qrcode");
+ if(el&&window.QRCode){el.innerHTML="";new QRCode(el,{text:joinUrl,width:180,height:180})}
+ const l=document.getElementById("joinUrl");if(l)l.textContent=joinUrl;
+}
+
+async function boot(){
+ if(!CONFIG.url||!CONFIG.key||CONFIG.url.includes("COLLE_TA_")||CONFIG.key.includes("COLLE_TA_")){
+   document.getElementById("app").innerHTML=`<div class="card hero"><h1>Configuration requise</h1><p>Ajoute ta Publishable Key Supabase dans <b>config.js</b>.</p></div>`;
+   return;
+ }
+ supabase=window.supabase.createClient(CONFIG.url,CONFIG.key);
+ const {data,error}=await supabase.auth.getSession();
+ if(error)return toast(error.message);
+ user=data.session?.user||null;
+
+ supabase.auth.onAuthStateChange((event,session)=>{
+   const previousId=user?.id||null;
+   user=session?.user||null;
+   if(event==="SIGNED_OUT"){
+     profile=null;game=null;role=null;player=null;wineCache=null;answerCache.clear();clearSession();
+     return authScreen();
+   }
+   if((event==="SIGNED_IN"||event==="USER_UPDATED") && user && (previousId!==user.id||!profile)){
+     setTimeout(()=>resumeAuthenticatedUser(),0);
+   }
+ });
+
+ if(!user)return authScreen();
+ await resumeAuthenticatedUser();
+}
+
+async function resumeAuthenticatedUser(){
+ if(!user)return authScreen();
+ if(user.is_anonymous)return legacyAnonymousScreen();
+ await ensureProfile();
+ if(!profile)return;
+ if(!(await restoreSession()))home();
+}
+async function ensureProfile(){
+ if(!user)return null;
+ const r=await supabase.from("profiles").select("*").eq("id",user.id).maybeSingle();
+ if(r.error)return toast(r.error.message);
+ if(!r.data){
+   const fallback=(user.user_metadata?.display_name||user.email?.split("@")[0]||"Joueur").slice(0,30);
+   const ins=await supabase.from("profiles").upsert({id:user.id,display_name:fallback}).select().single();
+   if(ins.error)return toast(ins.error.message);
+   profile=ins.data;
+ }else profile=r.data;
+ return profile;
+}
+function authScreen(message=""){
+ clearSession();
+ document.getElementById("app").innerHTML=`<div class="auth-shell">
+ <div class="card hero">
+  <div class=auth-mark>🍷</div>
+  <span class=pill>BLIND WINE</span>
+  <h1>Ton compte dégustateur</h1>
+  <p class=muted>Connecte-toi par email pour garder ton historique, tes scores et tes statistiques sur tous tes appareils.</p>
+  ${message?`<div class=notice>${esc(message)}</div>`:""}
+  <div style="text-align:left;max-width:430px;margin:24px auto 0">
+   <label>Prénom / pseudo</label>
+   <input id=authName maxlength=30 autocomplete=name placeholder="Yannis">
+   <label>Email</label>
+   <input id=authEmail type=email autocomplete=email inputmode=email placeholder="toi@email.com">
+   <button class=btn style="width:100%;margin-top:12px" onclick="sendMagicLink()">Recevoir mon lien de connexion</button>
+  </div>
+  <p class="small muted" style="margin-top:16px">Pas de mot de passe : tu reçois un lien sécurisé par email.</p>
+ </div></div>`;
+}
+async function sendMagicLink(){
+ const email=document.getElementById("authEmail")?.value.trim().toLowerCase();
+ const displayName=document.getElementById("authName")?.value.trim();
+ if(!email||!email.includes("@"))return toast("Entre une adresse email valide.");
+ if(!displayName)return toast("Entre ton prénom ou ton pseudo.");
+ const gameParam=new URLSearchParams(location.search).get("game");
+ const redirect=location.origin+location.pathname+(gameParam?`?game=${encodeURIComponent(gameParam)}`:"");
+ const r=await supabase.auth.signInWithOtp({
+   email,
+   options:{emailRedirectTo:redirect,shouldCreateUser:true,data:{display_name:displayName}}
+ });
+ if(r.error)return toast(r.error.message);
+ authScreen(`Lien envoyé à ${email}. Ouvre-le sur ce téléphone ou sur un autre appareil.`);
+}
+function legacyAnonymousScreen(){
+ document.getElementById("app").innerHTML=`<div class="auth-shell"><div class="card hero">
+  <div class=auth-mark>🍷</div><h1>Transforme ton ancien profil</h1>
+  <p class=muted>Ce téléphone utilise encore l’ancien mode invité. Tu peux le convertir en compte email pour conserver l’identité associée à tes anciennes dégustations.</p>
+  <div style="text-align:left;max-width:430px;margin:24px auto 0">
+   <label>Prénom / pseudo</label><input id=legacyName maxlength=30 placeholder="Yannis">
+   <label>Email</label><input id=legacyEmail type=email inputmode=email placeholder="toi@email.com">
+   <button class=btn style="width:100%;margin-top:12px" onclick="upgradeAnonymous()">Convertir mon profil</button>
+   <button class="btn secondary" style="width:100%;margin-top:8px" onclick="discardAnonymous()">Créer un nouveau compte à la place</button>
+  </div>
+ </div></div>`;
+}
+async function upgradeAnonymous(){
+ const email=document.getElementById("legacyEmail")?.value.trim().toLowerCase();
+ const name=document.getElementById("legacyName")?.value.trim();
+ if(!email||!email.includes("@")||!name)return toast("Prénom et email requis.");
+ const r=await supabase.auth.updateUser({email,data:{display_name:name}});
+ if(r.error)return toast(r.error.message);
+ toast("Vérifie ton email et confirme l’adresse. Ton ancien identifiant sera conservé si la confirmation aboutit.");
+}
+async function discardAnonymous(){
+ await supabase.auth.signOut();
+ profile=null;clearSession();authScreen();
+}
+async function logout(){
+ await supabase.auth.signOut();
+}
+async function saveProfile(){
+ const name=document.getElementById("profileDisplayName")?.value.trim();
+ if(!name)return toast("Le prénom/pseudo est requis.");
+ const r=await supabase.from("profiles").update({display_name:name,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();
+ if(r.error)return toast(r.error.message);
+ profile=r.data;toast("Profil enregistré.");renderProfile();
+}
+
+async function restoreSession(){
+ let saved=null;
+ try{saved=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
+ if(!saved?.gameId)return false;
+ const g=await supabase.from("games")
+   .select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at")
+   .eq("id",saved.gameId).maybeSingle();
+ if(g.error||!g.data){clearSession();return false}
+ game=g.data;wineCache=null;answerCache.clear();
+ // Le rôle ne vient jamais de localStorage : l'identité serveur fait foi.
+ role=game.host_id===user.id?"host":"player";
+ if(role==="player"){
+   const p=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
+   if(p.error||!p.data){clearSession();return false}
+   player=p.data;
+ }else player=null;
+ saveSession();subscribe();route();return true;
+}
+
+const EXPERIENCE={
+ blind:{icon:"🎯",name:"À l’aveugle",desc:"Compétition : tout est caché jusqu’à la révélation."},
+ discovery:{icon:"🎓",name:"Découverte",desc:"Apprentissage : le vin est connu et la dégustation est guidée."},
+ challenge:{icon:"🥂",name:"Challenge",desc:"Jeu + apprentissage : indices progressifs contre une pénalité de points."}
+};
+function modeInfo(){return EXPERIENCE[game?.experience_mode||"blind"]||EXPERIENCE.blind}
+function modeBadge(){let m=modeInfo();return `${m.icon} ${m.name}`}
+function selectExperience(m){document.getElementById("experienceMode").value=m;document.querySelectorAll(".mode-card").forEach(x=>x.classList.toggle("selected",x.dataset.mode===m))}
+
+function home(){
+ wineCache=null;answerCache.clear();
+ const preset=new URLSearchParams(location.search).get("game")||"";
+ const pname=profile?.display_name||"Joueur";
+ document.getElementById("app").innerHTML=`<header>
+ <div class="logo">🍷 <span>BLIND WINE</span></div>
+ <div class=account-bar><button class="btn secondary" onclick="renderProfile()">👤 ${esc(pname)}</button><button class="btn secondary" onclick="logout()">Déconnexion</button></div>
+ </header>
+ <div class="card hero"><div class="emoji">🍷</div><h1>Blind Wine</h1><p class="muted">Joue, découvre et apprends le vin ensemble.</p>
+ <div class="grid" style="max-width:820px;margin:30px auto 0">
+  <div class="card" style="grid-column:1/-1"><h2>Quelle expérience veux-tu créer ?</h2>
+   <div class="grid mode-grid">${Object.entries(EXPERIENCE).map(([k,m])=>`<button class="mode-card ${k==="blind"?"selected":""}" data-mode="${k}" onclick="selectExperience('${k}')"><span class=emoji>${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join("")}</div>
+   <input id=experienceMode type=hidden value=blind>
+   <label>Nombre de vins</label><select id="wineCount">${Array.from({length:18},(_,i)=>i+3).map(n=>`<option value="${n}" ${n===6?"selected":""}>${n} vins</option>`).join("")}</select>
+   <button class="btn" style="margin-top:10px;width:100%" onclick="createGame()">Créer la soirée</button></div>
+  <div class="card"><h2>Rejoindre une soirée</h2><label>Code</label><input id="joinCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" value="${esc(preset.toUpperCase())}">
+   <p class=muted>Tu participeras sous le nom <b>${esc(pname)}</b>.</p>
+   <button class="btn" style="margin-top:10px;width:100%" onclick="joinGame()">Rejoindre</button></div>
+ </div>
+ <button class="btn secondary" style="margin-top:18px" onclick="renderProfile()">📚 Mon historique & mes statistiques</button>
+ <div class=install-hint>📱 Sur iPhone : Safari → Partager → Ajouter à l’écran d’accueil.</div></div>`;
+}
+async function createGame(){
+ const wineCount=Math.max(3,Math.min(20,Number(document.getElementById("wineCount")?.value||9)));
+ const experienceMode=document.getElementById("experienceMode")?.value||"blind";
+ const r=await supabase.rpc("create_game",{p_wine_count:wineCount,p_experience_mode:experienceMode});
+ if(r.error)return toast(r.error.message);
+ const row=Array.isArray(r.data)?r.data[0]:r.data;
+ if(!row)return toast("Impossible de créer la partie.");
+ game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind'};
+ wineCache=null;answerCache.clear();
+ role="host";player=null;saveSession();subscribe();renderHostLobby();
+}
+async function joinGame(){
+ const code=document.getElementById("joinCode").value.trim().toUpperCase();
+ const name=(profile?.display_name||"").trim();
+ if(!code||!name)return toast("Code de partie ou profil incomplet.");
+ const r=await supabase.rpc("join_game",{p_code:code,p_name:name});
+ if(r.error)return toast(r.error.message);
+ const row=Array.isArray(r.data)?r.data[0]:r.data;
+ if(!row)return toast("Partie introuvable.");
+ game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind'};
+ wineCache=null;answerCache.clear();
+ role=game.host_id===user.id?"host":"player";
+ if(role==="player"){
+   const p=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
+   if(p.error)return toast(p.error.message);
+   player=p.data;
+ }else player=null;
+ saveSession();subscribe();route();
+}
+function subscribe(){
+ if(channel)supabase.removeChannel(channel);
+ channel=supabase.channel("game:"+game.id)
+  .on("postgres_changes",{event:"*",schema:"public",table:"games",filter:"id=eq."+game.id},async()=>{await refreshGame();requestRoute()})
+  .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:"game_id=eq."+game.id},()=>handlePlayersChange())
+  .on("postgres_changes",{event:"*",schema:"public",table:"answers",filter:"game_id=eq."+game.id},payload=>handleAnswerRealtime(payload))
+  .on("postgres_changes",{event:"*",schema:"public",table:"wine_reveals",filter:"game_id=eq."+game.id},async()=>{await refreshGame();requestRoute()})
+  .subscribe();
+}
+
+async function handlePlayersChange(){
+ if(role==="player"){
+   const p=await supabase.from("players").select("id,name").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
+   if(!p.data){
+     clearSession();
+     home();
+     return toast("L’organisateur t’a retiré de la partie.");
+   }
+   player={...player,...p.data};
+ }
+ requestRoute();
+}
+
+
+async function handleAnswerRealtime(payload){
+ if(role!=="host"||game?.status!=="tasting"||game?.phase!=="answering")return;
+ if(payload?.new?.done!==true&&payload?.old?.done!==true)return;
+ await refreshHostAnswerCount();
+}
+async function refreshHostAnswerCount(){
+ const el=document.getElementById("answerProgress");if(!el)return;
+ const ws=await getBlindWines(),w=ws[game.current];if(!w)return;
+ const [r,ps]=await Promise.all([
+   supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true),
+   getPlayers()
+ ]);
+ if(r.error)return;
+ const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
+ el.innerHTML=`<p><b>${answered}</b> / ${total} joueurs ont validé.</p><div class=notice>${answered===total&&total>0?"Tout le monde a répondu.":"Tu peux révéler quand tu le souhaites."}</div>`;
+}
+
+async function refreshGame(){
+ const r=await supabase.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).single();
+ if(r.data){game=r.data;saveSession()}
+}
+let routePending=false;
+function requestRoute(){
+ if(routePending)return;routePending=true;
+ queueMicrotask(()=>{routePending=false;route()});
+}
+function route(){
+ routeSeq++;
+ if(!game)return home();
+ if(role==="host"){
+   if(game.status==="lobby")return renderHostLobby();
+   if(game.status==="tasting")return game.phase==="revealed"?(game.experience_mode==="discovery"?renderHostDiscoveryReveal():renderHostReveal()):renderHostTasting();
+   return renderHostResults();
+ }else{
+   if(game.status==="lobby")return renderPlayerLobby();
+   if(game.status==="tasting")return game.phase==="revealed"?(game.experience_mode==="discovery"?renderPlayerDiscoveryReveal():renderPlayerReveal()):renderPlayerTasting();
+   return renderPlayerFinished();
+ }
+}
+async function getBlindWines(force=false){
+ if(!force&&wineCache?.gameId===game.id)return wineCache.rows;
+ const r=await supabase.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position");
+ if(r.error){toast(r.error.message);return []}
+ const rows=r.data||[];wineCache={gameId:game.id,rows};return rows;
+}
+async function getHostWines(){
+ const [w,s]=await Promise.all([
+  supabase.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position"),
+  supabase.from("wine_secrets").select("wine_id,game_id,name,price,region,grapes,learning_goal,learning_note,hint1,hint2,eye_tip,nose_tip,palate_tip,quiz_question,quiz_options,quiz_correct,quiz_explanation").eq("game_id",game.id)
+ ]);
+ if(w.error||s.error){toast((w.error||s.error).message);return []}
+ const map=new Map((s.data||[]).map(x=>[x.wine_id,x]));
+ return (w.data||[]).map(x=>({...x,...(map.get(x.id)||{}),id:x.id,grape:(map.get(x.id)?.grapes||[]).join(" / ")}));
+}
+async function getPlayers(){
+ const r=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).order("created_at");
+ if(r.error){toast(r.error.message);return []}
+ return r.data||[];
+}
+async function renderHostLobby(){
+ const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>ORGANISATEUR</span></header>
+ <div class="card center"><div class=muted>CODE DE LA PARTIE</div><div class=code>${esc(game.code)}</div>
+ <div class=row style="justify-content:center"><button class="btn secondary" onclick="navigator.clipboard?.writeText(game.code)">Copier le code</button><button class="btn secondary" onclick="navigator.clipboard?.writeText(document.getElementById('joinUrl').textContent)">Copier le lien</button></div>
+ <div id=qrcode style="display:flex;justify-content:center;margin:18px 0"></div><div id=joinUrl class="small muted"></div><p class=muted>Scanne le QR code : le code est prérempli.</p></div>
+ <div class=card><h2>👥 Joueurs <span class=muted>(${Math.max(0,ps.length-1)})</span></h2><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=player-chip>👤 ${esc(p.name)} <button class=kick title="Retirer ce joueur" onclick="removePlayer('${p.id}')">×</button></span>`).join("")||"<span class=muted>En attente…</span>"}</div></div>
+ <div class=card><h2>🍷 Bouteilles · ${modeBadge()}</h2><p class=muted>La couleur, la région et les cépages se sélectionnent dans des listes. Les vraies réponses restent privées jusqu'à la révélation.</p>
+ ${ws.map((w,i)=>`<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1}</b><span class=pill>${TYPES[w.type]}</span></div>
+ <div class=config-simple>
+  <div><label>Couleur du vin</label><select onchange="updateWineType('${w.id}',this.value)">${typeOptions(w.type)}</select></div>
+  <div><label>Nom du vin / cuvée</label><input value="${esc(w.name||"")}" onchange="updateWineSecret('${w.id}','name',this.value)" placeholder="Ex. Whispering Angel"></div>
+  <div><label>Prix réel (€)</label><input type=number min=.01 step=.01 value="${w.price??""}" onchange="updateWineSecret('${w.id}','price',this.value===''?null:Number(this.value))"></div>
+  <div><label>Région / appellation</label><select onchange="updateWineSecret('${w.id}','region',this.value)">${groupedRegionOptions(w.region||"")}</select></div>
+  <div style="grid-column:1/-1"><label>Cépage(s) / assemblage</label>${grapePickerHtml(w.id,w.grapes||w.grape,"host")}</div>
+  ${game.experience_mode!=="blind"?`<div style="grid-column:1/-1"><label>🎓 Objectif pédagogique</label><input value="${esc(w.learning_goal||"")}" onchange="updateWineSecret('${w.id}','learning_goal',this.value)" placeholder="Ex. Reconnaître l’acidité et les agrumes d’un Sauvignon"></div>
+  <div style="grid-column:1/-1"><label>💡 À retenir</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Le message principal que les participants doivent retenir.">${esc(w.learning_note||"")}</textarea></div>`:""}
+  ${game.experience_mode==="discovery"?`
+  <div style="grid-column:1/-1"><h3 style="margin-bottom:0">Parcours Découverte</h3><p class=muted>Ces contenus apparaissent au bon moment : Œil → Nez → Bouche → Comprendre.</p></div>
+  <div style="grid-column:1/-1"><label>👁️ Repère visuel</label><textarea onchange="updateWineSecret('${w.id}','eye_tip',this.value)" placeholder="Ex. Une robe pâle peut évoquer un vin jeune ou un cépage peu colorant.">${esc(w.eye_tip||"")}</textarea></div>
+  <div style="grid-column:1/-1"><label>👃 Repère aromatique</label><textarea onchange="updateWineSecret('${w.id}','nose_tip',this.value)" placeholder="Ex. Cherche les agrumes, les fleurs blanches et une éventuelle note végétale.">${esc(w.nose_tip||"")}</textarea></div>
+  <div style="grid-column:1/-1"><label>👄 Repère en bouche</label><textarea onchange="updateWineSecret('${w.id}','palate_tip',this.value)" placeholder="Ex. Observe l’acidité, la texture et la longueur plutôt que de chercher tout de suite à identifier le vin.">${esc(w.palate_tip||"")}</textarea></div>
+  <div style="grid-column:1/-1"><label>🧠 Question du mini-quiz</label><input value="${esc(w.quiz_question||"")}" onchange="updateWineSecret('${w.id}','quiz_question',this.value)" placeholder="Ex. Quel élément explique le mieux la sensation de fraîcheur ?"></div>
+  <div style="grid-column:1/-1"><label>Réponses du quiz (une par ligne, 2 à 4)</label><textarea onchange="updateQuizOptions('${w.id}',this.value)" placeholder="L’acidité&#10;Le sucre&#10;Les tanins">${esc((Array.isArray(w.quiz_options)?w.quiz_options:[]).join("\n"))}</textarea></div>
+  <div><label>Bonne réponse</label><select onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))"><option value="">Choisir…</option>${[0,1,2,3].map(i=>`<option value="${i}" ${Number(w.quiz_correct)===i?"selected":""}>Réponse ${i+1}</option>`).join("")}</select></div>
+  <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Ex. L’acidité provoque la salivation et donne cette impression de fraîcheur.">${esc(w.quiz_explanation||"")}</textarea></div>`:""}
+  ${game.experience_mode==="challenge"?`<div><label>Indice 1</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)"></div><div><label>Indice 2</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)"></div>`:""}
+ </div></div>`).join("")}</div>
+ <div class="card sticky"><button class=btn style="width:100%" onclick="startGame()">🚀 Lancer la dégustation</button></div>`;
+ setTimeout(qrForGame,0);
+}
+
+async function removePlayer(playerId){
+ if(game.status!=="lobby")return toast("Tu peux retirer un joueur uniquement avant le lancement.");
+ if(!confirm("Retirer ce joueur de la partie ?"))return;
+ const r=await supabase.from("players").delete().eq("id",playerId);
+ if(r.error)toast(r.error.message);
+ else renderHostLobby();
+}
+
+async function updateWineType(id,type){
+ wineCache=null;
+ const r=await supabase.from("wines").update({type}).eq("id",id);
+ if(r.error)toast(r.error.message);
+}
+async function updateWineSecret(wineId,key,val){
+ const patch={[key]:val};
+ const r=await supabase.from("wine_secrets").update(patch).eq("wine_id",wineId);
+ if(r.error)toast(r.error.message);
+}
+
+async function updateQuizOptions(wineId,text){
+ const options=String(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,4);
+ await updateWineSecret(wineId,"quiz_options",options);
+}
+async function updateWineGrapes(wineId,values){
+ const r=await supabase.from("wine_secrets").update({grapes:values}).eq("wine_id",wineId);
+ if(r.error)toast(r.error.message);
+}
+async function startGame(){
+ const ws=await getHostWines();
+ const missing=ws.filter(w=>!w.name||!w.price||!w.region||!(w.grapes||[]).length);
+ if(missing.length)return toast(`Complète les informations des vins : ${missing.map(w=>"#"+(w.position+1)).join(", ")}.`);
+ if(game.experience_mode==="discovery"){
+   const badQuiz=ws.filter(w=>{
+     const q=String(w.quiz_question||"").trim();
+     if(!q)return false;
+     const opts=Array.isArray(w.quiz_options)?w.quiz_options:[];
+     return opts.length<2||!Number.isInteger(w.quiz_correct)||w.quiz_correct<0||w.quiz_correct>=opts.length;
+   });
+   if(badQuiz.length)return toast(`Vérifie les mini-quiz des vins : ${badQuiz.map(w=>"#"+(w.position+1)).join(", ")}.`);
+ }
+ const r=await supabase.rpc("start_game",{p_game_id:game.id});
+ if(r.error)toast(r.error.message);
+}
+async function renderPlayerLobby(){
+ const ps=await getPlayers();
+ document.getElementById("app").innerHTML=`<div class="card hero"><div class=emoji>🍷</div><span class=pill>PARTIE ${esc(game.code)}</span><h1>Salut ${esc(player.name)} !</h1><p>Tu es connecté.</p>
+ <div class=notice>En attente du lancement de la dégustation…</div><h3>Joueurs</h3><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=chip>👤 ${esc(p.name)}</span>`).join("")}</div></div>`;
+}
+async function getAnswer(wineId,force=false){
+ const key=`${game.id}:${wineId}:${user.id}`;
+ if(!force&&answerCache.has(key))return answerCache.get(key);
+ const r=await supabase.from("answers").select("*").eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).maybeSingle();
+ if(r.error)toast(r.error.message);
+ const value=r.data||{game_id:game.id,wine_id:wineId,user_id:user.id,scores:{},aromas:[],note:null,price:null,region:"",grapes:[],grape:"",hint_level:0,discovery_step:0,quiz_choice:null,done:false};
+ answerCache.set(key,value);return value;
+}
+
+async function getDiscoveryWine(wineId){
+ if(game.experience_mode!=="discovery")return null;
+ const r=await supabase.rpc("get_discovery_wine",{p_game_id:game.id,p_wine_id:wineId});
+ return r.error?null:(Array.isArray(r.data)?r.data[0]:r.data);
+}
+async function getDiscoveryQuizFeedback(wineId){
+ if(game.experience_mode!=="discovery")return null;
+ const r=await supabase.rpc("get_discovery_quiz_feedback",{p_game_id:game.id,p_wine_id:wineId});
+ return r.error?null:(Array.isArray(r.data)?r.data[0]:r.data);
+}
+async function getChallengeHints(wineId){
+ if(game.experience_mode!=="challenge")return {};
+ const r=await supabase.rpc("get_challenge_hints",{p_game_id:game.id,p_wine_id:wineId});
+ return r.error?{}:(Array.isArray(r.data)?r.data[0]:r.data)||{};
+}
+async function revealHint(wineId,level){const a=await getAnswer(wineId);if(a.done)return;await upsertAnswer(wineId,{hint_level:Math.max(a.hint_level||0,level)});renderPlayerTasting()}
+function challengeFactor(a){return a.hint_level===1?.75:a.hint_level===2?.5:1}
+
+function discoveryDefaults(d){
+ const grapes=(d?.grapes||[]).join(" / ");
+ const identity=[regionLabel(d?.region),grapes].filter(Boolean).join(" · ");
+ return {
+   eye_tip:d?.eye_tip||"Observe d’abord la robe sans chercher à identifier le vin : intensité, limpidité et nuances donnent des indices sur son style et son évolution.",
+   nose_tip:d?.nose_tip||"Commence par les grandes familles d’arômes. Il est plus utile d’identifier « agrumes » ou « fruits rouges » que de chercher immédiatement un arôme très précis.",
+   palate_tip:d?.palate_tip||"En bouche, sépare les sensations : acidité, douceur, corps et longueur. Cette structure est souvent plus fiable que les arômes seuls.",
+   question:d?.quiz_question||"Quel est le meilleur réflexe pour progresser en dégustation ?",
+   options:(Array.isArray(d?.quiz_options)&&d.quiz_options.length>=2)?d.quiz_options:["Mettre des mots sur ses sensations","Trouver absolument le domaine","Se fier uniquement au prix"],
+   correct:0,
+   explanation:"La progression vient surtout de la capacité à décrire ce que l’on ressent, puis à relier ces sensations au style du vin.",
+   identity
+ };
+}
+function discoveryProgress(step){return `<div class=discovery-progress>${[0,1,2,3,4].map(i=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>`}
+async function setDiscoveryStep(wineId,step){
+ await upsertAnswer(wineId,{discovery_step:Math.max(0,Math.min(4,step))});
+ renderPlayerTasting();
+}
+async function chooseDiscoveryQuiz(wineId,index){
+ const a=await getAnswer(wineId);
+ if(Number.isInteger(a.quiz_choice))return toast("Ta première réponse au mini-quiz est déjà verrouillée.");
+ await upsertAnswer(wineId,{quiz_choice:index});
+ renderPlayerTasting();
+}
+function sensoryLabel(v){return v?`${v}/5`:"—"}
+function renderDiscoveryJourney(w,a,d,feedback=null){
+ const step=Math.max(0,Math.min(4,Number(a.discovery_step||0)));
+ const e=discoveryDefaults(d);
+ if(feedback){
+   e.correct=Number.isInteger(feedback.quiz_correct)?feedback.quiz_correct:0;
+   e.explanation=feedback.quiz_explanation||e.explanation;
+ }
+ const title=`${esc(d?.name||TYPES[w.type])}`;
+ const identity=`${esc(regionLabel(d?.region)||"")} ${d?.grapes?.length?"· "+esc(d.grapes.join(" / ")):""} ${d?.price?`· ${Number(d.price).toFixed(2)} €`:""}`;
+ let body="";
+ if(step===0){
+   body=`<div class=discovery-stage><div class=emoji>🎓</div><h2>${title}</h2><p class=muted>${identity}</p>
+   ${d?.learning_goal?`<div class=learning-card><b>Objectif de ce verre</b><div>${esc(d.learning_goal)}</div></div>`:""}
+   <div class=edu-tip><strong>Comment ça marche ?</strong>Tu vas avancer en 4 temps : observer, sentir, goûter puis comprendre. Il n’y a pas de “mauvaise” sensation : le but est d’apprendre à décrire ce que tu perçois.</div>
+   <div class=discovery-nav><button class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
+ }
+ if(step===1){
+   body=`<div class=discovery-stage><div class=emoji>👁️</div><h2>1. Observe</h2><p class=muted>Regarde le vin avant de le sentir.</p>
+   ${metric("Intensité visuelle","look",a)}
+   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.eye_tip)}</div>
+   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',0)">← Retour</button><button class=btn onclick="setDiscoveryStep('${w.id}',2)">Passer au nez →</button></div></div>`;
+ }
+ if(step===2){
+   body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>
+   ${metric("Intensité aromatique","nose",a)}
+   <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'))">${esc(x)}</button>`).join("")}</div></div>
+   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.nose_tip)}</div>
+   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
+ }
+ if(step===3){
+   body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>
+   ${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
+   <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswer('${w.id}','note',${n})">${n}</button>`).join("")}</div></div>
+   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.palate_tip)}</div>
+   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',2)">← Le nez</button><button class=btn onclick="setDiscoveryStep('${w.id}',4)">Comprendre →</button></div></div>`;
+ }
+ if(step===4){
+   const choice=Number.isInteger(a.quiz_choice)?a.quiz_choice:null;
+   const answered=choice!==null;
+   const correct=answered&&choice===e.correct;
+   body=`<div class=discovery-stage><div class=emoji>🧠</div><h2>4. Comprendre</h2>
+   <div class=learning-card><b>Mini-quiz</b><div style="margin-top:8px">${esc(e.question)}</div></div>
+   <div class=quiz-options>${e.options.slice(0,4).map((opt,i)=>`<button class="quiz-option ${choice===i?"selected":""} ${answered&&i===e.correct?"correct":""} ${answered&&choice===i&&i!==e.correct?"wrong":""}" ${answered?"disabled":""} onclick="chooseDiscoveryQuiz('${w.id}',${i})">${String.fromCharCode(65+i)}. ${esc(opt)}</button>`).join("")}</div>
+   ${answered?`<div class=edu-tip><strong>${correct?"✅ Bien vu !":"💡 À retenir"}</strong>${esc(e.explanation)}</div>`:`<p class=muted>Choisis une réponse pour afficher l’explication.</p>`}
+   ${d?.learning_note?`<div class=learning-card><b>La leçon de ce verre</b><div>${esc(d.learning_note)}</div></div>`:""}
+   <div class=discovery-summary>
+    <div class=row><span>👁️ Intensité visuelle</span><b>${sensoryLabel(a.scores?.look)}</b></div>
+    <div class=row><span>👃 Intensité aromatique</span><b>${sensoryLabel(a.scores?.nose)}</b></div>
+    <div class=row><span>🍋 Acidité</span><b>${sensoryLabel(a.scores?.acid)}</b></div>
+    <div class=row><span>💪 Corps</span><b>${sensoryLabel(a.scores?.body)}</b></div>
+    <div class=row><span>❤️ Plaisir</span><b>${a.note?`${a.note}/10`:"—"}</b></div>
+   </div>
+   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button class=btn ${(!a.note||!answered)?"disabled":""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
+   ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:""}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:""}
+   </div>`;
+ }
+ return `<div class=card><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${discoveryProgress(step)}${body}</div>${guideHtml()}`;
+}
+
+async function renderPlayerTasting(){
+ const ws=await getBlindWines(),w=ws[game.current];
+ if(!w)return toast("Vin introuvable.");
+ const [a,discovery,hints]=await Promise.all([getAnswer(w.id),getDiscoveryWine(w.id),getChallengeHints(w.id)]);
+ const discoveryFeedback=(game.experience_mode==="discovery"&&Number.isInteger(a.quiz_choice))?await getDiscoveryQuizFeedback(w.id):null;
+ if(a.done){
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span></header>
+   <div class="card hero"><div class=emoji>✅</div><h1>Réponse enregistrée</h1><p class=muted>Attends que l'organisateur révèle le vin.</p><div class=notice>Tu ne peux plus modifier ta réponse pour ce vin.</div></div>`;
+   return;
+ }
+ if(game.experience_mode==="discovery"){
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>${renderDiscoveryJourney(w,a,discovery,discoveryFeedback)}`;
+   return;
+ }
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>
+ <div class=card><span class=pill>VIN ${game.current+1} / ${ws.length} · ${modeBadge()}</span>
+ ${game.experience_mode==="discovery"&&discovery?`<div class=learning-card><b>🎓 ${esc(discovery.name)}</b><div>${esc(regionLabel(discovery.region))} · ${esc((discovery.grapes||[]).join(" / "))} · ${Number(discovery.price).toFixed(2)} €</div>${discovery.learning_goal?`<p><b>Objectif :</b> ${esc(discovery.learning_goal)}</p>`:""}</div>`:""}
+ ${game.experience_mode==="challenge"?`<div class=learning-card><b>🥂 Indices</b><div class=muted>Sans indice : 100 % · 1 indice : 75 % · 2 indices : 50 % des points.</div>${(a.hint_level||0)>=1?`<p>💡 ${esc(hints.hint1||"Observe les marqueurs dominants.")}</p>`:`<button class="btn secondary" onclick="revealHint('${w.id}',1)">Indice 1</button>`}${(a.hint_level||0)>=2?`<p>💡💡 ${esc(hints.hint2||"Replace le vin dans son origine probable.")}</p>`:(a.hint_level||0)>=1?`<button class="btn secondary" onclick="revealHint('${w.id}',2)">Indice 2</button>`:""}</div>`:""}<div class=wine-head><div><h1>${TYPES[w.type]}</h1><p class=muted>Observe, sens et goûte. Le classement repose sur le prix, la région et les cépages.</p></div><div class=emoji>${ICON[w.type]}</div></div>
+ ${metric("👁️ Intensité visuelle","look",a)}${metric("👃 Intensité aromatique","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
+ <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'))">${esc(x)}</button>`).join("")}</div></div>
+ <div class=section><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswer('${w.id}','note',${n})">${n}</button>`).join("")}</div></div>
+ <div class=grid>
+  <div><label>💰 Prix estimé (€)</label><input type=number min=.01 step=.5 value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="Ex. 15"></div>
+  <div><label>🌍 Région / appellation</label><select onchange="setAnswer('${w.id}','region',this.value)">${groupedRegionOptions(a.region||"")}</select></div>
+  <div><label>🍇 Cépage(s)</label>${grapePickerHtml(w.id,answerGrapes(a),"player")}</div>
+ </div>
+ <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">Valider définitivement</button></div></div>${guideHtml()}`;
+}
+function metric(label,key,a){
+ return `<div class=section><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n})">${n}</button>`).join("")}</div></div>`;
+}
+async function setScore(wineId,key,n){
+ const a=await getAnswer(wineId),scores={...(a.scores||{}),[key]:n};
+ await upsertAnswer(wineId,{scores});
+}
+async function setAnswer(wineId,key,val){await upsertAnswer(wineId,{[key]:val})}
+async function toggleAroma(wineId,x){
+ const a=await getAnswer(wineId),ar=a.aromas||[];
+ await upsertAnswer(wineId,{aromas:ar.includes(x)?ar.filter(v=>v!==x):[...ar,x]});
+}
+async function setPlayerGrapes(wineId,values){await upsertAnswer(wineId,{grapes:values})}
+async function upsertAnswer(wineId,patch){
+ const a=await getAnswer(wineId);
+ if(a.done)return toast("Réponse déjà validée.");
+ const payload={...a,...patch};delete payload.id;delete payload.created_at;
+ const key=`${game.id}:${wineId}:${user.id}`;
+ answerCache.set(key,payload);
+ const r=await supabase.from("answers").upsert(payload,{onConflict:"game_id,wine_id,user_id"}).select().single();
+ if(r.error){answerCache.set(key,a);return toast(r.error.message)}
+ answerCache.set(key,r.data);return r.data;
+}
+async function submitAnswer(wineId){
+ const a=await getAnswer(wineId,true);
+ if(a.done)return;
+ if(!a.note)return toast("Ajoute ta note globale.");
+ if(game.experience_mode==="discovery"&&!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
+ if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
+ const r=await supabase.from("answers").update({done:true}).eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).eq("done",false);
+ if(r.error)return toast(r.error.message);
+ const key=`${game.id}:${wineId}:${user.id}`;answerCache.set(key,{...a,done:true});
+ renderPlayerTasting();
+}
+
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function revealSeenKey(rv){return `blindwine:v32:reveal:${game.id}:${rv.wine_id}:${role}`}
+let activeRevealIntro=null;
+async function playRevealIntro(rv){
+ const key=revealSeenKey(rv);
+ if(sessionStorage.getItem(key)==="1")return;
+ if(activeRevealIntro?.key===key)return activeRevealIntro.promise;
+ const promise=(async()=>{
+   const app=document.getElementById("app");
+   const particles=`<div class=reveal-particles>${"<i></i>".repeat(8)}</div>`;
+   for(const n of ["3","2","1"]){
+     app.innerHTML=`<div class=reveal-stage>${particles}<div><div class=reveal-kicker>Préparez-vous</div><div class=reveal-count>${n}</div></div></div>`;
+     await sleep(650);
+   }
+   app.innerHTML=`<div class=reveal-stage>${particles}<div><div class=reveal-bottle-icon>${ICON[rv.type]||"🍷"}</div><div class=reveal-kicker>Le vin était…</div><h1 class=reveal-wine-name>${esc(rv.name)}</h1><div>${esc(regionLabel(rv.region))}</div><div class=reveal-price>${Number(rv.price).toFixed(2)} €</div></div></div>`;
+   await sleep(1500);
+   sessionStorage.setItem(key,"1");
+ })();
+ activeRevealIntro={key,promise};
+ try{await promise}finally{if(activeRevealIntro?.key===key)activeRevealIntro=null}
+}
+function tiedNames(items,scoreFn,{requirePositive=false}={}){
+ if(!items.length)return "—";
+ const scored=items.map(x=>({x,v:Number(scoreFn(x))})).filter(y=>Number.isFinite(y.v));
+ if(!scored.length)return "—";
+ const best=Math.max(...scored.map(y=>y.v));
+ if(requirePositive&&best<=0)return "Personne";
+ return scored.filter(y=>y.v===best).map(y=>y.x.playerName||"Joueur").join(" & ");
+}
+function closestPriceNames(items,realPrice){
+ if(!items.length)return "—";
+ const scored=items.map(x=>({x,v:Math.abs(Number(x.price)-Number(realPrice))})).filter(y=>Number.isFinite(y.v));
+ if(!scored.length)return "—";
+ const best=Math.min(...scored.map(y=>y.v));
+ return scored.filter(y=>Math.abs(y.v-best)<1e-9).map(y=>y.x.playerName||"Joueur").join(" & ");
+}
+async function getRevealDashboardData(rv){
+ const [playersR,answersR,revealsR]=await Promise.all([
+   supabase.from("players").select("user_id,name").eq("game_id",game.id).order("created_at"),
+   supabase.from("answers").select("user_id,wine_id,note,price,region,grapes,grape,hint_level,done").eq("game_id",game.id).eq("done",true),
+   supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("game_id",game.id)
+ ]);
+ const err=playersR.error||answersR.error||revealsR.error;
+ if(err){toast(err.message);return {rows:[],current:[],awards:{},group:{}}}
+ const players=(playersR.data||[]).filter(p=>p.user_id!==game.host_id);
+ const playerById=new Map(players.map(p=>[p.user_id,p]));
+ const reveals=revealsR.data||[];
+ const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
+ const answers=(answersR.data||[]).map(a=>({...a,playerName:playerById.get(a.user_id)?.name||"Joueur"}));
+ const answersByUser=new Map(),answersByWine=new Map();
+ for(const a of answers){
+   if(!answersByUser.has(a.user_id))answersByUser.set(a.user_id,[]);
+   answersByUser.get(a.user_id).push(a);
+   if(!answersByWine.has(a.wine_id))answersByWine.set(a.wine_id,[]);
+   answersByWine.get(a.wine_id).push(a);
+ }
+ const rows=players.map(p=>{
+   const mine=(answersByUser.get(p.user_id)||[]).filter(a=>revealByWine.has(a.wine_id));
+   const score=mine.reduce((sum,a)=>sum+knowledgeScore(a,revealByWine.get(a.wine_id)),0);
+   return {user_id:p.user_id,name:p.name,score,count:mine.length};
+ }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,"fr"));
+ let lastScore=null,lastRank=0;
+ rows.forEach((row,i)=>{if(row.score!==lastScore){lastRank=i+1;lastScore=row.score}row.rank=lastRank});
+ const current=answersByWine.get(rv.wine_id)||[];
+ const avgPrice=current.length?current.reduce((s,a)=>s+Number(a.price||0),0)/current.length:0;
+ const avgNote=current.length?current.reduce((s,a)=>s+Number(a.note||0),0)/current.length:0;
+ const awards={
+   top:tiedNames(current,a=>knowledgeScore(a,rv),{requirePositive:true}),
+   price:closestPriceNames(current,rv.price),
+   region:tiedNames(current,a=>regionScore(a.region,rv.region),{requirePositive:true}),
+   grape:tiedNames(current,a=>grapeScore(answerGrapes(a),rv.grapes),{requirePositive:true}),
+   heart:tiedNames(current,a=>Number(a.note||0),{requirePositive:true})
+ };
+ return {rows,current,awards,group:{avgPrice,avgNote,count:current.length}};
+}
+function awardCardsHtml(awards){
+ return `<div class=round-awards>
+   <div class=round-award><div class=award-icon>🏆</div><span>Meilleur score du vin</span><strong>${esc(awards.top||"—")}</strong></div>
+   <div class=round-award><div class=award-icon>🎯</div><span>Prix le plus proche</span><strong>${esc(awards.price||"—")}</strong></div>
+   <div class=round-award><div class=award-icon>🗺️</div><span>Meilleure région</span><strong>${esc(awards.region||"—")}</strong></div>
+   <div class=round-award><div class=award-icon>🍇</div><span>Meilleurs cépages</span><strong>${esc(awards.grape||"—")}</strong></div>
+   <div class=round-award><div class=award-icon>❤️</div><span>Plus gros coup de cœur</span><strong>${esc(awards.heart||"—")}</strong></div>
+ </div>`;
+}
+function rankingHtml(rows){
+ if(!rows.length)return `<p class=muted>Aucun classement disponible.</p>`;
+ const medal=r=>r===1?"🥇":r===2?"🥈":r===3?"🥉":r;
+ return `<div class=live-ranking>${rows.map(x=>`<div class="live-rank-row ${x.user_id===user?.id?"me":""}">
+   <div class=live-rank-pos>${medal(x.rank)}</div>
+   <div><b>${esc(x.name)}</b><div class="small muted">${x.count} vin${x.count>1?"s":""} comptabilisé${x.count>1?"s":""}</div></div>
+   <div class=live-rank-score>${x.score} pts</div>
+ </div>`).join("")}</div>`;
+}
+
+async function renderHostTasting(){
+ const [ws,ps]=await Promise.all([getBlindWines(),getPlayers()]);
+ const w=ws[game.current];if(!w)return;
+ const r=await supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
+ const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span></header>
+ <div class="card hero"><div class=emoji>${ICON[w.type]}</div><span class=pill>${TYPES[w.type]}</span><h1>Vin #${game.current+1}</h1>
+ <p><b>${answered}</b> / ${total} joueurs ont validé.</p><div class=notice>${answered===total&&total>0?"Tout le monde a répondu.":"Tu peux révéler quand tu le souhaites."}</div>
+ <button class="btn gold" onclick="revealWine()">✨ Révéler le vin</button></div>`;
+}
+async function revealWine(){
+ const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
+ const w=ws[game.current];if(!w)return;
+ const ar=await supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
+ if(ar.error)return toast(ar.error.message);
+ const answered=ar.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
+ if(total===0)return toast("Ajoute au moins un joueur avant de révéler.");
+ if(answered<total&&!confirm(`${total-answered} joueur(s) n'ont pas encore validé. Révéler quand même ?`))return;
+ const rr=await supabase.rpc("reveal_current_wine",{p_game_id:game.id});
+ if(rr.error)return toast(rr.error.message);
+}
+async function getCurrentReveal(){
+ const ws=await getBlindWines(),w=ws[game.current];if(!w)return null;
+ const r=await supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("wine_id",w.id).maybeSingle();
+ return r.data?{...r.data,type:w.type,position:w.position}:null;
+}
+
+async function renderHostDiscoveryReveal(){
+ const pos=game.current;
+ const ws=await getBlindWines(),w=ws[pos];if(!w)return;
+ const [rvR,ansR]=await Promise.all([
+   supabase.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
+   supabase.from("answers").select("note,quiz_choice").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
+ ]);
+ if(rvR.error||ansR.error)return toast((rvR.error||ansR.error).message);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
+ const rv=rvR.data,aa=ansR.data||[];if(!rv)return requestRoute();
+ const avg=aa.length?aa.reduce((s,a)=>s+Number(a.note||0),0)/aa.length:0;
+ const edu=discoveryDefaults(rv);
+ const quizCorrect=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
+ const quiz=aa.filter(a=>Number.isInteger(a.quiz_choice)&&Number(a.quiz_choice)===quizCorrect).length;
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN DU VERRE</span></header>
+ <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p></div>
+ ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
+ <div class=card><h2>🧠 Mini-quiz</h2><p><b>${esc(edu.question)}</b></p><p>${quiz}/${aa.length} bonne${quiz>1?"s":""} réponse${aa.length>1?"s":""}.</p><div class=notice>${esc(rv.quiz_explanation||edu.explanation)}</div></div>
+ <div class=card><div class=stat><span>❤️ Note plaisir du groupe</span><strong>${aa.length?avg.toFixed(1)+"/10":"—"}</strong></div></div>
+ <div class="card sticky"><button class=btn style="width:100%" onclick="nextWine()">${game.current+1>=game.wine_count?"Terminer la soirée":"Passer au vin suivant →"}</button></div>`;
+}
+async function renderPlayerDiscoveryReveal(){
+ const pos=game.current;
+ const ws=await getBlindWines(),w=ws[pos];if(!w)return;
+ const [rvR,a]=await Promise.all([
+   supabase.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
+   getAnswer(w.id,true)
+ ]);
+ if(rvR.error)return toast(rvR.error.message);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
+ const rv=rvR.data;if(!rv)return requestRoute();
+ const edu=discoveryDefaults(rv);
+ const opts=edu.options;
+ const correct=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
+ const answered=Number.isInteger(a.quiz_choice)&&a.done===true;
+ const ok=answered&&Number(a.quiz_choice)===correct;
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
+ <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div>
+ ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
+ <div class=card><h2>${!answered?"⏱️ Réponse non validée":ok?"✅ Bien vu":"🧠 Correction"}</h2><p><b>${esc(edu.question)}</b></p>${answered?`<p>Bonne réponse : <b>${esc(opts[correct]||"—")}</b></p>`:`<p class=muted>Tu n’avais pas terminé ce verre avant la révélation.</p>`}<div class=notice>${esc(rv.quiz_explanation||edu.explanation)}</div></div>
+ <div class=card><p class=muted>L’organisateur lancera le prochain vin.</p></div>`;
+}
+async function renderHostReveal(){
+ const rv=await getCurrentReveal();
+ if(!rv)return renderHostTasting();
+ await playRevealIntro(rv);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
+ const dash=await getRevealDashboardData(rv);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>RÉVÉLATION · VIN ${game.current+1}</span></header>
+ <div class="card hero"><div class=emoji>${ICON[rv.type]}</div><span class=pill>${TYPES[rv.type]}</span>
+ <h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p><div class=code>${Number(rv.price).toFixed(2)} €</div></div>
+ <div class=card><h2>📊 Le groupe sur ce vin</h2><div class=reveal-summary>
+   <div class=stat><span>Prix estimé moyen</span><strong>${dash.group.count?dash.group.avgPrice.toFixed(2)+" €":"—"}</strong></div>
+   <div class=stat><span>Prix réel</span><strong>${Number(rv.price).toFixed(2)} €</strong></div>
+   <div class=stat><span>Note plaisir moyenne</span><strong>${dash.group.count?dash.group.avgNote.toFixed(1)+"/10":"—"}</strong></div>
+ </div></div>
+ <div class=card><h2>🎖️ Récompenses du vin</h2>${awardCardsHtml(dash.awards)}</div>
+ <div class=card><h2>🏁 Classement intermédiaire</h2><p class=muted>Classement cumulé après ${game.current+1} vin${game.current+1>1?"s":""}.</p>${rankingHtml(dash.rows)}</div>
+ <div class=card><h2>🔎 Réponses détaillées</h2><table><tr><th>Joueur</th><th>Prix</th><th>Région</th><th>Cépage</th><th>Score</th></tr>${dash.current.map(a=>`<tr><td>${esc(a.playerName)}</td><td>${Number(a.price).toFixed(2)} €</td><td>${esc(regionLabel(a.region))}</td><td>${esc(answerGrapes(a).join(" / "))}</td><td><b>${knowledgeScore(a,rv)}/11</b></td></tr>`).join("")}</table>
+ <button class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Vin suivant":"Voir les résultats"}</button></div>`;
+}
+async function renderPlayerReveal(){
+ const rv=await getCurrentReveal();
+ if(!rv){
+   document.getElementById("app").innerHTML=`<div class="card hero"><h1>Révélation…</h1><p class=muted>Chargement du vin.</p></div>`;
+   return;
+ }
+ await playRevealIntro(rv);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
+ const [a,dash]=await Promise.all([getAnswer(rv.wine_id,true),getRevealDashboardData(rv)]);
+ if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
+ const validated=a.done===true;
+ const parts=validated?scoreParts(a,rv,game.experience_mode):{price:0,region:0,grape:0,total:0,factor:1};
+ const ps=parts.price;
+ const rs=parts.region;
+ const gs=parts.grape;
+ const total=parts.total;
+ const myRank=dash.rows.find(x=>x.user_id===user.id)?.rank||0;
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>RÉVÉLATION</span></header>
+ <div class="card hero"><div class=emoji>${ICON[rv.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p><div class=code>${Number(rv.price).toFixed(2)} €</div>
+ <div class=scorebox><div class=scoreitem><span>Prix</span><b>${ps}/5</b></div><div class=scoreitem><span>Région</span><b>${rs}/3</b></div><div class=scoreitem><span>Cépages</span><b>${gs}/3</b></div></div>
+ <h2 style="margin-top:18px">${total}/11 points</h2>${validated&&game.experience_mode==="challenge"&&parts.factor<1?`<div class=muted>Multiplicateur d’indices : ×${parts.factor}</div>`:""}${!validated?`<div class=notice>⚠️ Tu n’avais pas validé ta réponse avant la révélation : elle ne compte pas au classement.</div>`:myRank?`<div class=notice>Tu es actuellement <b>${myRank}${myRank===1?"er":"e"}</b> du classement général.</div>`:""}</div>
+ <div class=card><h2>📊 Le groupe sur ce vin</h2><div class=reveal-summary>
+   <div class=stat><span>Prix estimé moyen</span><strong>${dash.group.count?dash.group.avgPrice.toFixed(2)+" €":"—"}</strong></div>
+   <div class=stat><span>Prix réel</span><strong>${Number(rv.price).toFixed(2)} €</strong></div>
+   <div class=stat><span>Note plaisir moyenne</span><strong>${dash.group.count?dash.group.avgNote.toFixed(1)+"/10":"—"}</strong></div>
+ </div></div>
+ <div class=card><h2>🎖️ Récompenses du vin</h2>${awardCardsHtml(dash.awards)}</div>
+ <div class=card><h2>🏁 Classement intermédiaire</h2>${rankingHtml(dash.rows)}<p class=muted style="margin-top:14px">L'organisateur lancera le vin suivant.</p></div>`;
+}
+async function nextWine(){
+ if(game.phase!=="revealed")return;
+ const r=await supabase.rpc("advance_game",{p_game_id:game.id});
+ if(r.error)toast(r.error.message);
+}
+
+async function renderProfile(){
+ if(!user||!profile)return home();
+ const playersR=await supabase.from("players").select("game_id,user_id,name,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
+ if(playersR.error)return toast(playersR.error.message);
+ const participations=playersR.data||[],gameIds=[...new Set(participations.map(p=>p.game_id))];
+ let games=[],answers=[],reveals=[];
+ if(gameIds.length){
+   const [gamesR,answersR,revealsR]=await Promise.all([
+     supabase.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").in("id",gameIds).order("created_at",{ascending:false}),
+     supabase.from("answers").select("game_id,wine_id,note,price,region,grapes,grape,hint_level,quiz_choice,done").eq("user_id",user.id).eq("done",true).in("game_id",gameIds),
+     supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").in("game_id",gameIds)
+   ]);
+   const err=gamesR.error||answersR.error||revealsR.error;if(err)return toast(err.message);
+   games=gamesR.data||[];answers=answersR.data||[];reveals=revealsR.data||[];
+ }
+ const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
+ const gameById=new Map(games.map(g=>[g.id,g]));
+ const answersByGame=new Map();
+ for(const a of answers){if(!answersByGame.has(a.game_id))answersByGame.set(a.game_id,[]);answersByGame.get(a.game_id).push(a)}
+ const completedGames=participations.map(p=>gameById.get(p.game_id)).filter(g=>g?.status==="finished");
+ let totalPts=0,maxPts=0,pricePts=0,regionPts=0,grapePts=0,totalPriceErr=0,priceCount=0;
+ let favorite=null;
+ for(const a of answers){
+   const rv=revealByWine.get(a.wine_id);if(!rv)continue;
+   const gm=gameById.get(a.game_id)?.experience_mode||"blind";
+   if(gm!=="discovery"){
+     const s=scoreParts(a,rv,gm);
+     totalPts+=s.total;maxPts+=11;pricePts+=s.price;regionPts+=s.region;grapePts+=s.grape;
+     if(Number(rv.price)>0&&Number.isFinite(Number(a.price))){
+       totalPriceErr+=Math.abs(Number(a.price)-Number(rv.price))/Number(rv.price);priceCount++;
+     }
+   }
+   if(!favorite||Number(a.note||0)>favorite.note)favorite={note:Number(a.note||0),rv};
+ }
+ const avgScore=maxPts?totalPts/maxPts*100:0,avgPriceErr=priceCount?totalPriceErr/priceCount*100:0;
+ const history=participations.map(p=>{
+   const g=gameById.get(p.game_id);if(!g)return null;
+   const ga=answersByGame.get(g.id)||[];let score=0,possible=0;
+   for(const a of ga){const rv=revealByWine.get(a.wine_id);if(!rv)continue;
+     if(g.experience_mode!=="discovery"){score+=knowledgeScore(a,rv,g.experience_mode);possible+=11}
+   }
+   return {g,score,possible,count:ga.length,host:g.host_id===user.id};
+ }).filter(Boolean).sort((a,b)=>new Date(b.g.created_at)-new Date(a.g.created_at));
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><button class="btn secondary" onclick="home()">← Accueil</button></header>
+ <div class=card>
+  <div class=profile-name><div class=avatar>${esc((profile.display_name||"?")[0].toUpperCase())}</div><div><span class=pill>MON PROFIL</span><h1 style="margin:5px 0">${esc(profile.display_name)}</h1><div class="small muted">${esc(user.email||"")}</div></div></div>
+  <div class=grid style="margin-top:18px"><div><label>Prénom / pseudo</label><input id=profileDisplayName maxlength=30 value="${esc(profile.display_name)}"></div></div>
+  <button class="btn secondary" onclick="saveProfile()">Enregistrer le profil</button>
+ </div>
+ <div class=card><h2>📊 Mes statistiques</h2><div class=metric-grid>
+  <div class=metric-card><span>Dégustations terminées</span><strong>${completedGames.length}</strong></div>
+  <div class=metric-card><span>Vins notés</span><strong>${answers.length}</strong></div>
+  <div class=metric-card><span>Score moyen</span><strong>${avgScore.toFixed(0)}%</strong></div>
+  <div class=metric-card><span>Erreur prix moyenne</span><strong>${avgPriceErr.toFixed(0)}%</strong></div>
+  <div class=metric-card><span>Points prix</span><strong>${pricePts}</strong></div>
+  <div class=metric-card><span>Points régions</span><strong>${regionPts}</strong></div>
+  <div class=metric-card><span>Points cépages</span><strong>${grapePts}</strong></div>
+  <div class=metric-card><span>Vin préféré</span><strong style="font-size:15px">${favorite?esc(favorite.rv.name):"—"}</strong></div>
+ </div></div>
+ <div class=card><h2>📚 Historique</h2><div class=history-list>${history.map(h=>`<div class=history-item>
+  <div><h3>${h.host?"👑 Soirée organisée":"🍷 Dégustation"} · ${new Date(h.g.created_at).toLocaleDateString("fr-FR")}</h3>
+  <div class=muted>${(EXPERIENCE[h.g.experience_mode]||EXPERIENCE.blind).icon} ${(EXPERIENCE[h.g.experience_mode]||EXPERIENCE.blind).name} · Code ${esc(h.g.code)} · ${h.g.wine_count} vins · ${h.g.status==="finished"?"Terminée":h.g.status==="tasting"?"En cours":"Lobby"}</div></div>
+  <div><b>${h.possible?`${h.score}/${h.possible} pts`:"—"}</b><br><span class="small muted">${h.count} réponse${h.count>1?"s":""}</span></div>
+ </div>`).join("")||"<p class=muted>Aucune dégustation pour le moment.</p>"}</div></div>`;
+}
+
+async function renderPlayerFinished(){
+ const [ws,rr,ar]=await Promise.all([
+  getBlindWines(),
+  supabase.from("wine_reveals").select("*").eq("game_id",game.id),
+  supabase.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true)
+ ]);
+ const err=rr.error||ar.error;if(err)return toast(err.message);
+ const reveals=rr.data||[],as=ar.data||[];
+
+ if(game.experience_mode==="discovery"){
+   const recap=ws.map((w,i)=>{
+     const rv=reveals.find(x=>x.wine_id===w.id),a=as.find(x=>x.wine_id===w.id);
+     if(!rv||!a)return "";
+     const ed=discoveryDefaults(rv);
+     const opts=ed.options;
+     const correct=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
+     const explanation=rv.quiz_explanation||ed.explanation;
+     const question=rv.quiz_question||ed.question;
+     const qc=Number(a.quiz_choice),ok=Number.isInteger(qc)&&qc===correct;
+     return `<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1} — ${esc(rv.name)}</b><span class=pill>${a.note||"—"}/10</span></div>
+       <p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p>
+       ${rv.learning_note?`<div class=learning-card><b>💡 À retenir</b><div>${esc(rv.learning_note)}</div></div>`:""}
+       <div class=edu-tip><strong>🧠 ${esc(question)}</strong>${ok?"✅ Bonne réponse":"Réponse : "+esc(opts[correct]||"—")}<br>${esc(explanation)}</div>
+     </div>`;
+   }).join("");
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 TON PARCOURS</span></header>
+    <div class="card hero"><div class=emoji>🎓</div><h1>Dégustation terminée</h1><p class=muted>Tu as observé, senti, goûté et appris sur ${as.length} vin${as.length>1?"s":""}.</p></div>
+    <div class=card><h2>Ce que tu as découvert</h2>${recap||"<p class=muted>Aucune fiche enregistrée.</p>"}</div>
+    <div class=card><button class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+   return;
+ }
+
+ let total=0;
+ const recap=ws.map((w,i)=>{
+   const rv=reveals.find(x=>x.wine_id===w.id),a=as.find(x=>x.wine_id===w.id);
+   if(!rv||!a)return "";
+   const s=scoreParts(a,rv,game.experience_mode);total+=s.total;
+   const hintText=game.experience_mode==="challenge"&&a.hint_level?` · ${a.hint_level} indice${a.hint_level>1?"s":""} utilisé${a.hint_level>1?"s":""} (×${s.factor})`:"";
+   return `<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1} — ${esc(rv.name)}</b><span class=pill>${s.total}/11 pts</span></div>
+   <div class=grid style="margin-top:10px"><div><b>Ton prix</b><br>${Number(a.price).toFixed(2)} € <span class=muted>→ ${Number(rv.price).toFixed(2)} €</span><br><small>${s.price}/5 pts</small></div>
+   <div><b>Ta région</b><br>${esc(regionLabel(a.region))}<br><span class=muted>Vrai : ${esc(regionLabel(rv.region))}</span><br><small>${s.region}/3 pts</small></div>
+   <div><b>Tes cépages</b><br>${esc(answerGrapes(a).join(" / "))}<br><span class=muted>Vrai : ${esc((rv.grapes||[]).join(" / "))}</span><br><small>${s.grape}/3 pts</small></div></div>
+   <div class=notice style="margin-top:10px"><b>Réponse réelle :</b> ${esc(rv.name)} · ${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €${hintText}</div>
+   <p class=muted>Ta note plaisir : <b>${a.note}/10</b></p></div>`;
+ }).join("");
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>TON RÉCAP</span></header>
+ <div class="card hero"><div class=emoji>🏆</div><h1>${Math.round(total*100)/100} points</h1><p class=muted>Maximum théorique : ${ws.length*11} points.${game.experience_mode==="challenge"?" Les indices réduisent les points obtenus.":""}</p></div>
+ <div class=card><h2>Ton récapitulatif</h2>${recap||"<p class=muted>Aucune réponse enregistrée.</p>"}</div>
+ <div class=card><button class="btn" onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+}
+async function renderHostResults(){
+ const [ws,pss,rr,aa] = await Promise.all([
+   getBlindWines(),getPlayers(),
+   supabase.from("wine_reveals").select("*").eq("game_id",game.id),
+   supabase.from("answers").select("*").eq("game_id",game.id).eq("done",true)
+ ]);
+ if(rr.error||aa.error)return toast((rr.error||aa.error).message);
+ const ps=(pss||[]).filter(p=>p.user_id!==game.host_id),reveals=rr.data||[];
+ const playerById=new Map(ps.map(p=>[p.user_id,p]));
+ const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
+ const allAnswers=(aa.data||[]).map(a=>({...a,playerName:playerById.get(a.user_id)?.name||"Joueur"}));
+ const answersByUser=new Map(),answersByWine=new Map();
+ for(const a of allAnswers){
+   if(!answersByUser.has(a.user_id))answersByUser.set(a.user_id,[]);answersByUser.get(a.user_id).push(a);
+   if(!answersByWine.has(a.wine_id))answersByWine.set(a.wine_id,[]);answersByWine.get(a.wine_id).push(a);
+ }
+
+ if(game.experience_mode==="discovery"){
+   const wineStats=ws.map((w,i)=>{
+     const list=answersByWine.get(w.id)||[],rv=revealByWine.get(w.id);
+     return {i,w,rv,count:list.length,avg:list.length?list.reduce((s,a)=>s+Number(a.note||0),0)/list.length:0};
+   }).filter(x=>x.rv);
+   const quizAnswers=allAnswers.filter(a=>Number.isInteger(a.quiz_choice)&&revealByWine.get(a.wine_id));
+   const quizTotal=quizAnswers.filter(a=>{
+     const rv=revealByWine.get(a.wine_id);
+     const correct=Number.isInteger(rv?.quiz_correct)?Number(rv.quiz_correct):0;
+     return Number(a.quiz_choice)===correct;
+   }).length;
+   const quizPossible=quizAnswers.length;
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
+    <div class="card hero"><div class=emoji>🎓</div><h1>Soirée Découverte terminée</h1><p class=muted>${ps.length} participant${ps.length>1?"s":""} · ${ws.length} vins explorés</p></div>
+    <div class=card><h2>Ce qu’a préféré le groupe</h2>${wineStats.sort((a,b)=>b.avg-a.avg).map(x=>`<div class=wine-row><b>${ICON[x.w.type]} ${esc(x.rv.name)}</b><span class=pill>${x.count?x.avg.toFixed(1):"—"}/10</span><p class=muted>${esc(x.rv.learning_note||"")}</p></div>`).join("")}</div>
+    <div class=card><h2>🧠 Compréhension</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><p class=muted>Le mode Découverte ne produit pas de classement compétitif : l’objectif est l’apprentissage collectif.</p></div>
+    <div class=card><button class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+   return;
+ }
+
+ const rows=[];
+ for(const p of ps){
+   const as=answersByUser.get(p.user_id)||[];
+   let score=0,pricePts=0,regionPts=0,grapePts=0,priceDelta=0;
+   for(const a of as){
+     const rv=revealByWine.get(a.wine_id);if(!rv)continue;
+     const s=scoreParts(a,rv,game.experience_mode);
+     pricePts+=s.price;regionPts+=s.region;grapePts+=s.grape;score+=s.total;
+     priceDelta+=Math.abs(Number(a.price||0)-Number(rv.price||0));
+   }
+   rows.push({name:p.name,user_id:p.user_id,score,pricePts,regionPts,grapePts,priceDelta,count:as.length});
+ }
+ rows.sort((a,b)=>b.score-a.score||a.priceDelta-b.priceDelta||a.name.localeCompare(b.name,"fr"));
+ let prevScore=null,competitionRank=0;
+ rows.forEach((row,i)=>{if(row.score!==prevScore){competitionRank=i+1;prevScore=row.score}row.rank=competitionRank});
+ const tiedRowNames=(key)=>{
+   if(!rows.length)return "—";
+   const best=Math.max(...rows.map(r=>Number(r[key]||0)));
+   return rows.filter(r=>Number(r[key]||0)===best).map(r=>r.name).join(" & ");
+ };
+ const bestSommelier=tiedRowNames("score");
+ const bestPrice=tiedRowNames("pricePts");
+ const bestGrape=tiedRowNames("grapePts");
+ const bestRegion=tiedRowNames("regionPts");
+ const wineStats=ws.map(w=>{
+   const list=answersByWine.get(w.id)||[],rv=revealByWine.get(w.id);
+   return {w,rv,avg:list.length?list.reduce((s,a)=>s+Number(a.note||0),0)/list.length:0,count:list.length};
+ }).filter(x=>x.rv&&x.count).sort((a,b)=>b.avg-a.avg);
+ const favorite=wineStats[0];
+ const tasteRows=ps.map(p=>{
+   const deviations=[];
+   for(const w of ws){
+     const list=answersByWine.get(w.id)||[];if(!list.length)continue;
+     const avg=list.reduce((s,a)=>s+Number(a.note||0),0)/list.length,pa=list.find(a=>a.user_id===p.user_id);
+     if(pa)deviations.push(Math.abs(Number(pa.note||0)-avg));
+   }
+   return {name:p.name,dev:deviations.length?deviations.reduce((s,x)=>s+x,0)/deviations.length:Infinity};
+ }).sort((a,b)=>a.dev-b.dev);
+ const finiteTaste=tasteRows.filter(x=>isFinite(x.dev));
+ const bestTasteDev=finiteTaste.length?finiteTaste[0].dev:null;
+ const bestTaste=bestTasteDev==null?"—":finiteTaste.filter(x=>Math.abs(x.dev-bestTasteDev)<1e-9).map(x=>x.name).join(" & ");
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>FINAL</span></header>
+ <div class="card hero"><div class=emoji>🏆</div><h1>Classement final</h1><p class=muted>Prix + région + cépages${game.experience_mode==="challenge"?" · pénalité selon les indices utilisés":""}.</p></div>
+ <div class=podium>${rows.filter(x=>x.rank<=3).map(x=>`<div class=stat center><div class=emoji>${x.rank===1?"🥇":x.rank===2?"🥈":"🥉"}</div><h2>${esc(x.name)}</h2><strong>${x.score} pts</strong><span class=muted>${x.count}/${game.wine_count} vins</span></div>`).join("")}</div>
+ <div class=card><h2>🎖️ Badges de la soirée</h2><div class=grid>
+  <div class=stat><span>🧠 Meilleur sommelier</span><strong>${esc(bestSommelier)}</strong><span class=muted>${rows.length?Math.max(...rows.map(r=>r.score)):0} pts</span></div>
+  <div class=stat><span>💰 Meilleur estimateur</span><strong>${esc(bestPrice)}</strong><span class=muted>${rows.length?Math.max(...rows.map(r=>r.pricePts)):0} pts prix</span></div>
+  <div class=stat><span>🍇 Expert cépages</span><strong>${esc(bestGrape)}</strong><span class=muted>${rows.length?Math.max(...rows.map(r=>r.grapePts)):0} pts cépages</span></div>
+  <div class=stat><span>🗺️ Expert régions</span><strong>${esc(bestRegion)}</strong><span class=muted>${rows.length?Math.max(...rows.map(r=>r.regionPts)):0} pts régions</span></div>
+  <div class=stat><span>❤️ Meilleur goût du groupe</span><strong>${esc(bestTaste)}</strong><span class=muted>Notes les plus proches du groupe</span></div>
+ </div></div>
+ <div class=card><h2>❤️ Favori de la soirée</h2>${favorite?`<div class=wine-row><div class=wine-head><b>${ICON[favorite.w.type]} ${esc(favorite.rv.name)}</b><span class=pill>${favorite.avg.toFixed(1)}/10</span></div><p>${esc(regionLabel(favorite.rv.region))} · ${esc((favorite.rv.grapes||[]).join(" / "))} · ${Number(favorite.rv.price).toFixed(2)} €</p></div>`:"<p class=muted>Aucune note.</p>"}</div>
+ <div class=card><button class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button></div>
+ <div class=card><button class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>
+ <div class=card><h2>Classement dégustateurs</h2><table><tr><th>#</th><th>Joueur</th><th>Total</th><th>Prix</th><th>Région</th><th>Cépages</th></tr>${rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}</td><td><b>${x.score}</b></td><td>${x.pricePts}</td><td>${x.regionPts}</td><td>${x.grapePts}</td></tr>`).join("")}</table></div>`;
+}
+async function renderHostStats(){
+ const [ws,rr,ar]=await Promise.all([
+   getBlindWines(),
+   supabase.from("wine_reveals").select("*").eq("game_id",game.id),
+   supabase.from("answers").select("*").eq("game_id",game.id).eq("done",true)
+ ]);
+ const err=rr.error||ar.error;if(err)return toast(err.message);
+ const reveals=rr.data||[],answers=ar.data||[];
+ const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
+ const answersByWine=new Map();
+ for(const a of answers){if(!answersByWine.has(a.wine_id))answersByWine.set(a.wine_id,[]);answersByWine.get(a.wine_id).push(a)}
+ const cards=ws.map((w,i)=>{
+   const rv=revealByWine.get(w.id),aa=answersByWine.get(w.id)||[];
+   if(!rv)return "";
+   const avgPrice=game.experience_mode!=="discovery"&&aa.length?aa.reduce((s,a)=>s+Number(a.price||0),0)/aa.length:0;
+   const avgNote=aa.length?aa.reduce((s,a)=>s+Number(a.note||0),0)/aa.length:0;
+   const avgErr=game.experience_mode!=="discovery"&&aa.length?aa.reduce((s,a)=>s+Math.abs(Number(a.price||0)-Number(rv.price||0)),0)/aa.length:0;
+   const dist=Array.from({length:10},(_,idx)=>aa.filter(a=>Number(a.note)===idx+1).length);
+   const max=Math.max(1,...dist);
+   return `<div class=card><div class=wine-head><div><span class=pill>VIN ${i+1}</span><h2 style="margin-top:8px">${ICON[w.type]} ${esc(rv.name)}</h2><p class=muted>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div><b>${Number(rv.price).toFixed(2)} €</b></div>
+   <div class=stats-grid>
+    ${game.experience_mode!=="discovery"?`<div class=stats-kpi><span>Prix estimé moyen</span><b>${avgPrice.toFixed(2)} €</b></div><div class=stats-kpi><span>Écart moyen au vrai prix</span><b>${avgErr.toFixed(2)} €</b></div>`:""}
+    <div class=stats-kpi><span>Note plaisir moyenne</span><b>${avgNote.toFixed(1)}/10</b></div>
+   </div>
+   <h3>Distribution des notes</h3><div class=stats-bars>${dist.map((n,idx)=>`<div class=stats-line><span>${idx+1}</span><div class=stats-track><div class=stats-fill style="width:${(n/max)*100}%"></div></div><b>${n}</b></div>`).join("")}</div>
+   <p class="small muted">${aa.length} réponse${aa.length>1?"s":""}</p></div>`;
+ }).join("");
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>STATISTIQUES</span></header>
+ <div class="card hero"><div class=emoji>📊</div><h1>Statistiques de la soirée</h1><p class=muted>Prix estimés, écarts et notes bouteille par bouteille.</p><button class="btn secondary" onclick="renderHostResults()">← Retour au classement</button></div>
+ ${cards||"<div class=card><p class=muted>Aucune statistique disponible.</p></div>"}`;
+}
+
+
+
+function updateNetworkBanner(){
+ const b=document.getElementById("netBanner");
+ if(b)b.classList.toggle("show",!navigator.onLine);
+}
+window.addEventListener("online",updateNetworkBanner);
+window.addEventListener("offline",updateNetworkBanner);
+setTimeout(updateNetworkBanner,0);
+
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+
+boot();
+
+</script></body></html>
