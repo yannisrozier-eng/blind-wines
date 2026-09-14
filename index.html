@@ -9,7 +9,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Blind Wine">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blind Wine">
+<meta property="og:description" content="Le jeu de dégustation de vin à partager entre amis : blind, découverte et challenge.">
+<meta property="og:image" content="./og-preview.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blind Wine">
+<meta name="twitter:description" content="Le jeu de dégustation de vin à partager entre amis.">
+<meta name="twitter:image" content="./og-preview.jpg">
+
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="./config.js"></script>
@@ -849,9 +860,434 @@ tr:last-child td{border-bottom:0}
  box-shadow:none;
  pointer-events:none;
 }
+
+.progress-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:18px;
+ flex-wrap:wrap;
+}
+.progress-best{
+ min-width:150px;
+ padding:12px 14px;
+ border:1px solid var(--line);
+ border-radius:14px;
+ background:var(--surface-soft);
+ text-align:center;
+}
+.progress-best span,.progress-best small{display:block;color:var(--muted);font-size:12px}
+.progress-best strong{display:block;font-size:30px;color:var(--wine);margin:3px 0}
+.progress-chart-scroll{
+ width:100%;
+ overflow-x:auto;
+ -webkit-overflow-scrolling:touch;
+ margin-top:14px;
+}
+.progress-chart{
+ width:100%;
+ min-width:620px;
+ height:auto;
+ display:block;
+ background:linear-gradient(180deg,#fff,#fcfaf8);
+ border:1px solid var(--line);
+ border-radius:16px;
+}
+.progress-grid-line{stroke:#e9e2dc;stroke-width:1}
+.progress-axis-label,.progress-date{
+ fill:#817772;
+ font-size:14px;
+ font-family:inherit;
+}
+.progress-value{
+ fill:var(--wine-dark);
+ font-size:14px;
+ font-weight:850;
+ font-family:inherit;
+}
+.progress-line{
+ fill:none;
+ stroke:var(--wine);
+ stroke-width:5;
+ stroke-linecap:round;
+ stroke-linejoin:round;
+}
+.progress-point circle{
+ fill:#fff;
+ stroke:var(--wine);
+ stroke-width:5;
+ cursor:pointer;
+}
+.progress-point circle:focus{
+ outline:none;
+ stroke:var(--wine-dark);
+ stroke-width:7;
+}
+.progress-summary{
+ margin-top:14px;
+ padding:13px 15px;
+ border-radius:14px;
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ align-items:center;
+ flex-wrap:wrap;
+}
+.progress-summary strong,.progress-summary span{display:block}
+.progress-summary.positive{background:#edf6f1;color:#355b49}
+.progress-summary.negative{background:#f8ecec;color:#7a3a3a}
+.progress-summary.neutral{background:var(--surface-soft);color:var(--ink)}
+.progress-empty{
+ padding:24px;
+ margin-top:14px;
+ text-align:center;
+ border:1px dashed var(--line);
+ border-radius:16px;
+ background:var(--surface-soft);
+}
+.history-score{
+ min-width:110px;
+ text-align:right;
+ display:flex;
+ flex-direction:column;
+ gap:3px;
+}
+.history-score>strong{
+ color:var(--wine);
+ font-size:17px;
+}
+.metric-card small{
+ display:block;
+ margin-top:3px;
+ color:var(--muted);
+ font-size:11px;
+}
+@media(max-width:560px){
+ .progress-chart{min-width:560px}
+ .history-item{align-items:flex-start}
+ .history-score{min-width:88px}
+}
+
+
+/* V3.5.8 — fiche joueur mobile-first */
+.player-sheet{
+ overflow:visible;
+}
+.player-sheet .wine-head{
+ align-items:flex-start;
+}
+.player-sheet .wine-head>div:first-child{
+ min-width:0;
+ flex:1;
+}
+.player-sheet .wine-head h1,
+.player-sheet .wine-head p{
+ overflow-wrap:anywhere;
+}
+.player-sheet .section{
+ margin-top:20px;
+ padding-top:2px;
+}
+.player-sheet .section h3{
+ margin:0 0 10px;
+ line-height:1.25;
+}
+.player-sheet .player-metric + .player-metric{
+ margin-top:18px;
+}
+.player-sheet .scale{
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:8px;
+}
+.player-sheet .scale button{
+ min-width:0;
+ min-height:46px;
+ padding:10px 2px;
+ font-size:15px;
+}
+.player-sheet .scale.ten{
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:8px;
+}
+.player-sheet .scale.ten button{
+ min-height:44px;
+}
+.player-sheet .chips{
+ align-items:flex-start;
+}
+.player-sheet .chip{
+ line-height:1.2;
+ white-space:normal;
+ text-align:center;
+}
+.player-guess-grid{
+ grid-template-columns:1fr!important;
+ gap:10px!important;
+ margin-top:18px;
+}
+.player-guess-grid>div{
+ min-width:0;
+}
+.player-guess-grid label{
+ margin-top:8px;
+}
+.player-sheet input,
+.player-sheet select,
+.player-sheet textarea,
+.player-sheet .searchable-picker{
+ min-width:0;
+ max-width:100%;
+ box-sizing:border-box;
+}
+.player-sheet .searchable-picker{
+ width:100%;
+}
+.player-sheet .searchable-picker>summary{
+ min-width:0;
+}
+.player-sheet .searchable-picker>summary span:first-child{
+ min-width:0;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+}
+.player-sheet .choice-picker-body,
+.player-sheet .grape-picker-body{
+ width:100%;
+ box-sizing:border-box;
+}
+.player-sheet .choice-option,
+.player-sheet .grape-option{
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+.player-sheet .choice-option span:first-child,
+.player-sheet .grape-option span{
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+.player-sheet .reference-guide{
+ margin:18px 0 22px;
+}
+.player-sheet .reference-guide>summary{
+ min-height:48px;
+}
+.player-sheet .scorebox{
+ grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.player-sheet .scoreitem{
+ min-width:0;
+ padding:12px 8px;
+}
+.player-sheet .scoreitem span{
+ display:block;
+ font-size:11px;
+ line-height:1.2;
+ overflow-wrap:anywhere;
+}
+.player-sheet .scoreitem b{
+ font-size:20px;
+}
+.player-action{
+ z-index:20;
+ margin-left:-4px;
+ margin-right:-4px;
+ padding:10px!important;
+ bottom:8px;
+}
+.player-action .btn{
+ min-height:50px;
+ font-size:15px;
+}
+.discovery-player-sheet .discovery-nav{
+ display:flex;
+ flex-wrap:wrap;
+ gap:10px;
+}
+.discovery-player-sheet .discovery-nav .btn{
+ min-width:min(210px,100%);
+}
+.discovery-player-sheet .discovery-summary .row{
+ align-items:flex-start;
+}
+.discovery-player-sheet .quiz-options{
+ display:grid;
+ gap:9px;
+}
+.discovery-player-sheet .quiz-option{
+ width:100%;
+ min-height:48px;
+ text-align:left;
+ white-space:normal;
+ overflow-wrap:anywhere;
+}
+
+/* Evite qu'un picker ouvert passe visuellement sous le bouton sticky */
+.player-sheet details[open]{
+ position:relative;
+ z-index:30;
+}
+.player-sheet details[open] .choice-picker-body,
+.player-sheet details[open] .grape-picker-body{
+ position:relative;
+ z-index:31;
+}
+.player-sheet details[open] ~ .player-action{
+ z-index:10;
+}
+
+@media(max-width:700px){
+ .player-sheet{
+   padding:16px!important;
+   border-radius:18px;
+ }
+ .player-sheet .wine-head{
+   gap:10px;
+ }
+ .player-sheet .wine-head .emoji{
+   font-size:34px;
+   flex:0 0 auto;
+ }
+ .player-sheet .wine-head h1{
+   font-size:clamp(24px,8vw,34px);
+ }
+ .player-sheet .notice,
+ .player-sheet .learning-card,
+ .player-sheet .edu-tip{
+   padding:13px;
+   line-height:1.45;
+ }
+ .player-sheet .reference-guide-body{
+   padding:10px;
+ }
+ .player-sheet .reference-grid{
+   grid-template-columns:1fr;
+ }
+ .player-sheet .grape-choice-list{
+   grid-template-columns:1fr;
+ }
+ .player-sheet .choice-picker-body{
+   max-height:44vh;
+ }
+ .player-sheet .grape-picker-body{
+   max-height:44vh;
+ }
+ .player-sheet .scorebox{
+   gap:7px;
+ }
+}
+
+@media(max-width:430px){
+ .player-sheet{
+   padding:14px!important;
+ }
+ .player-sheet .scale{
+   gap:6px;
+ }
+ .player-sheet .scale button{
+   min-height:44px;
+   border-radius:10px;
+ }
+ .player-sheet .scale.ten{
+   grid-template-columns:repeat(5,minmax(0,1fr));
+ }
+ .player-sheet .chips{
+   gap:6px;
+ }
+ .player-sheet .chip{
+   padding:8px 10px;
+   font-size:12px;
+ }
+ .player-sheet .scorebox{
+   grid-template-columns:1fr 1fr 1fr;
+ }
+ .player-sheet .scoreitem{
+   padding:10px 5px;
+ }
+ .player-sheet .scoreitem b{
+   font-size:18px;
+ }
+ .player-action{
+   bottom:6px;
+ }
+}
+
+@media(max-width:360px){
+ .player-sheet .scorebox{
+   grid-template-columns:1fr;
+ }
+ .player-sheet .scoreitem{
+   display:flex;
+   align-items:center;
+   justify-content:space-between;
+   gap:12px;
+   text-align:left;
+ }
+ .player-sheet .scoreitem b{
+   margin-top:0;
+ }
+}
+
+
+/* V3.5.9 — navigation & ergonomie mobile */
+.global-home-btn{
+ bottom:84px;
+ z-index:16;
+}
+.player-action{z-index:22}
+.player-sheet details[open]{z-index:32}
+.player-sheet details[open] .choice-picker-body,
+.player-sheet details[open] .grape-picker-body{z-index:33}
+
+@media(max-width:560px){
+ .global-home-btn{
+   right:12px;
+   bottom:76px;
+   z-index:16;
+   width:44px;
+   height:44px;
+   padding:0;
+   justify-content:center;
+ }
+ .player-action{
+   bottom:6px;
+   z-index:22;
+ }
+ header{
+   gap:8px;
+   min-width:0;
+ }
+ header .logo{
+   min-width:0;
+   flex:1;
+ }
+ header .logo span{
+   overflow:hidden;
+   text-overflow:ellipsis;
+   white-space:nowrap;
+ }
+ header>.pill{
+   flex:0 0 auto;
+   max-width:46vw;
+   overflow:hidden;
+   text-overflow:ellipsis;
+   white-space:nowrap;
+ }
+}
+
+/* Visible keyboard focus for accessibility */
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+ outline:3px solid rgba(111,36,61,.28);
+ outline-offset:2px;
+}
+
 </style></head>
 <body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
-<button id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
+<button type="button" id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
 <script>
 
 const CONFIG={
@@ -1344,7 +1780,7 @@ function authScreen(message=""){
    <input id=authName maxlength=30 autocomplete=name placeholder="Yannis">
    <label>Email</label>
    <input id=authEmail type=email autocomplete=email inputmode=email placeholder="toi@email.com">
-   <button class=btn style="width:100%;margin-top:12px" onclick="sendMagicLink()">Recevoir mon lien de connexion</button>
+   <button type="button" class=btn style="width:100%;margin-top:12px" onclick="sendMagicLink()">Recevoir mon lien de connexion</button>
   </div>
   <p class="small muted" style="margin-top:16px">Pas de mot de passe : tu reçois un lien sécurisé par email.</p>
  </div></div>`;
@@ -1371,8 +1807,8 @@ function legacyAnonymousScreen(){
   <div style="text-align:left;max-width:430px;margin:24px auto 0">
    <label>Prénom / pseudo</label><input id=legacyName maxlength=30 placeholder="Yannis">
    <label>Email</label><input id=legacyEmail type=email inputmode=email placeholder="toi@email.com">
-   <button class=btn style="width:100%;margin-top:12px" onclick="upgradeAnonymous()">Convertir mon profil</button>
-   <button class="btn secondary" style="width:100%;margin-top:8px" onclick="discardAnonymous()">Créer un nouveau compte à la place</button>
+   <button type="button" class=btn style="width:100%;margin-top:12px" onclick="upgradeAnonymous()">Convertir mon profil</button>
+   <button type="button" class="btn secondary" style="width:100%;margin-top:8px" onclick="discardAnonymous()">Créer un nouveau compte à la place</button>
   </div>
  </div></div>`;
 }
@@ -1494,15 +1930,15 @@ function home(){
      <div class=emoji>${game.experience_mode==="discovery"?"🎓":game.experience_mode==="challenge"?"🥂":"🎯"}</div>
    </div>
    <div class=row style="margin-top:10px;gap:10px;flex-wrap:wrap">
-     <button class=btn style="flex:1;min-width:220px" onclick="resumeCurrentGame()">${game.status==="finished"?"🏁 Voir les résultats":"↩ Reprendre la partie en cours"}</button>
-     <button class="btn secondary" style="flex:1;min-width:220px" onclick="closeCurrentSession()">${game.status==="finished"?"✓ Fermer cette session":"↪ Quitter cette session"}</button>
-     ${role==="host"&&game.status!=="finished"?`<button class="btn secondary" style="flex:1;min-width:220px" onclick="deleteCurrentGame()">🗑️ Abandonner et supprimer</button>`:""}
+     <button type="button" class=btn style="flex:1;min-width:220px" onclick="resumeCurrentGame()">${game.status==="finished"?"🏁 Voir les résultats":"↩ Reprendre la partie en cours"}</button>
+     <button type="button" class="btn secondary" style="flex:1;min-width:220px" onclick="closeCurrentSession()">${game.status==="finished"?"✓ Fermer cette session":"↪ Quitter cette session"}</button>
+     ${role==="host"&&game.status!=="finished"?`<button type="button" class="btn secondary" style="flex:1;min-width:220px" onclick="deleteCurrentGame()">🗑️ Abandonner et supprimer</button>`:""}
    </div>
  </div>`:"";
 
  document.getElementById("app").innerHTML=`<header>
  <div class="logo">🍷 <span>BLIND WINE</span></div>
- <div class=account-bar><button class="btn secondary" onclick="renderProfile()">👤 ${esc(pname)}</button><button class="btn secondary" onclick="logout()">Déconnexion</button></div>
+ <div class=account-bar><button type="button" class="btn secondary" onclick="renderProfile()">👤 ${esc(pname)}</button><button type="button" class="btn secondary" onclick="logout()">Déconnexion</button></div>
  </header>
  ${activeGame}
  <div class="card hero"><div class="emoji">🍷</div><h1>Blind Wine</h1><p class="muted">Joue, découvre et apprends le vin ensemble.</p>
@@ -1511,13 +1947,13 @@ function home(){
     <div class=emoji>🎉</div>
     <h2>Organiser une soirée</h2>
     <p class=muted>Choisis d’abord le type d’expérience, puis configure tes bouteilles.</p>
-    <button class="btn" style="margin-top:10px;width:100%" onclick="renderCreateExperience()">Créer une soirée</button>
+    <button type="button" class="btn" style="margin-top:10px;width:100%" onclick="renderCreateExperience()">Créer une soirée</button>
   </div>
   <div class="card"><h2>Rejoindre une soirée</h2><label>Code</label><input id="joinCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" value="${esc(preset.toUpperCase())}">
    <p class=muted>Tu participeras sous le nom <b>${esc(pname)}</b>.</p>
-   <button class="btn" style="margin-top:10px;width:100%" onclick="joinGame()">Rejoindre</button></div>
+   <button type="button" class="btn" style="margin-top:10px;width:100%" onclick="joinGame()">Rejoindre</button></div>
  </div>
- <button class="btn secondary" style="margin-top:18px" onclick="renderProfile()">📚 Mon historique & mes statistiques</button>
+ <button type="button" class="btn secondary" style="margin-top:18px" onclick="renderProfile()">📚 Mon historique & mes statistiques</button>
  <div class=install-hint>📱 Sur iPhone : Safari → Partager → Ajouter à l’écran d’accueil.</div></div>`;
  updateGlobalHomeButton();
 }
@@ -1526,7 +1962,7 @@ function renderCreateExperience(){
  document.body.dataset.screen="create";updateGlobalHomeButton();
  document.getElementById("app").innerHTML=`<header>
    <div class=logo>🍷 <span>BLIND WINE</span></div>
-   <button class="btn secondary" onclick="home()">← Retour</button>
+   <button type="button" class="btn secondary" onclick="home()">← Retour</button>
  </header>
  <div class="card hero">
    <div class=muted>ÉTAPE 1 SUR 2</div>
@@ -1535,7 +1971,7 @@ function renderCreateExperience(){
 
    <div class="grid mode-grid" style="margin-top:24px">
      ${Object.entries(EXPERIENCE).map(([k,m])=>`
-       <button class="mode-card" data-mode="${k}" onclick="selectExperience('${k}')">
+       <button type="button" class="mode-card" data-mode="${k}" onclick="selectExperience('${k}')">
          <span class=emoji>${m.icon}</span>
          <b>${m.name}</b>
          <small>${m.desc}</small>
@@ -1552,7 +1988,7 @@ function renderCreateExperience(){
      </select>
    </div>
 
-   <button class=btn style="margin-top:18px;width:100%" onclick="confirmCreateExperience()">Continuer vers la configuration des vins →</button>
+   <button type="button" class=btn style="margin-top:18px;width:100%" onclick="confirmCreateExperience()">Continuer vers la configuration des vins →</button>
  </div>`;
 }
 
@@ -1677,9 +2113,9 @@ async function renderHostLobby(){
  const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>ORGANISATEUR</span></header>
  <div class="card center"><div class=muted>MODE DE LA SOIRÉE</div><h2 style="margin:6px 0 18px">${modeBadge()}</h2><div class=muted>CODE DE LA PARTIE</div><div class=code>${esc(game.code)}</div>
- <div class=row style="justify-content:center"><button class="btn secondary" onclick="navigator.clipboard?.writeText(game.code)">Copier le code</button><button class="btn secondary" onclick="navigator.clipboard?.writeText(document.getElementById('joinUrl').textContent)">Copier le lien</button></div>
+ <div class=row style="justify-content:center"><button type="button" class="btn secondary" onclick="navigator.clipboard?.writeText(game.code)">Copier le code</button><button type="button" class="btn secondary" onclick="navigator.clipboard?.writeText(document.getElementById('joinUrl').textContent)">Copier le lien</button></div>
  <div id=qrcode style="display:flex;justify-content:center;margin:18px 0"></div><div id=joinUrl class="small muted"></div><p class=muted>Scanne le QR code : le code est prérempli.</p></div>
- <div class=card><h2>👥 Joueurs <span class=muted>(${Math.max(0,ps.length-1)})</span></h2><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=player-chip>👤 ${esc(p.name)} <button class=kick title="Retirer ce joueur" onclick="removePlayer('${p.id}')">×</button></span>`).join("")||"<span class=muted>En attente…</span>"}</div></div>
+ <div class=card><h2>👥 Joueurs <span class=muted>(${Math.max(0,ps.length-1)})</span></h2><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=player-chip>👤 ${esc(p.name)} <button type="button" class=kick title="Retirer ce joueur" onclick="removePlayer('${p.id}')">×</button></span>`).join("")||"<span class=muted>En attente…</span>"}</div></div>
  <div class=card><h2>🍷 Bouteilles · ${modeBadge()}</h2><p class=muted>La couleur, la région et les cépages se sélectionnent dans des listes. Les vraies réponses restent privées jusqu'à la révélation.</p>
  ${ws.map((w,i)=>`<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1}</b><span class=pill>${TYPES[w.type]}</span></div>
  <div class=config-simple>
@@ -1701,7 +2137,7 @@ async function renderHostLobby(){
   <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Ex. L’acidité provoque la salivation et donne cette impression de fraîcheur.">${esc(w.quiz_explanation||"")}</textarea></div>`:""}
   ${game.experience_mode==="challenge"?`<div style="grid-column:1/-1"><label>💡 Explication après révélation</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Ce que les joueurs doivent retenir une fois le vin révélé.">${esc(w.learning_note||"")}</textarea></div><div><label>Indice 1 · léger</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)" placeholder="Ex. Cherche le poivre et les fruits noirs"></div><div><label>Indice 2 · précis</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)" placeholder="Ex. Rhône Nord"></div>`:""}
  </div></div>`).join("")}</div>
- <div class="card sticky"><button class=btn style="width:100%" onclick="startGame()">🚀 Lancer la dégustation</button></div>`;
+ <div class="card sticky"><button type="button" class=btn style="width:100%" onclick="startGame()">🚀 Lancer la dégustation</button></div>`;
  setTimeout(qrForGame,0);
 }
 
@@ -1830,27 +2266,27 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
    body=`<div class=discovery-stage><div class=emoji>🎓</div><h2>${title}</h2><p class=muted>${identity}</p>
    ${d?.learning_goal?`<div class=learning-card><b>Objectif de ce verre</b><div>${esc(d.learning_goal)}</div></div>`:""}
    <div class=edu-tip><strong>Comment ça marche ?</strong>Tu vas avancer en 4 temps : observer, sentir, goûter puis comprendre. Il n’y a pas de “mauvaise” sensation : le but est d’apprendre à décrire ce que tu perçois.</div>
-   <div class=discovery-nav><button class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
+   <div class=discovery-nav><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
  }
  if(step===1){
    body=`<div class=discovery-stage><div class=emoji>👁️</div><h2>1. Observe</h2><p class=muted>Regarde le vin avant de le sentir.</p>
    ${metric("Intensité visuelle","look",a)}
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.eye_tip)}</div>
-   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',0)">← Retour</button><button class=btn onclick="setDiscoveryStep('${w.id}',2)">Passer au nez →</button></div></div>`;
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',0)">← Retour</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',2)">Passer au nez →</button></div></div>`;
  }
  if(step===2){
    body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>
    ${metric("Intensité aromatique","nose",a)}
-   <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
+   <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.nose_tip)}</div>
-   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
  }
  if(step===3){
    body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>
    ${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
-   <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
+   <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.palate_tip)}</div>
-   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',2)">← Le nez</button><button class=btn onclick="setDiscoveryStep('${w.id}',4)">Comprendre →</button></div></div>`;
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',2)">← Le nez</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',4)">Comprendre →</button></div></div>`;
  }
  if(step===4){
    const choice=Number.isInteger(a.quiz_choice)?a.quiz_choice:null;
@@ -1858,7 +2294,7 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
    const correct=answered&&choice===e.correct;
    body=`<div class=discovery-stage><div class=emoji>🧠</div><h2>4. Comprendre</h2>
    <div class=learning-card><b>Mini-quiz</b><div style="margin-top:8px">${esc(e.question)}</div></div>
-   <div class=quiz-options>${e.options.slice(0,4).map((opt,i)=>`<button class="quiz-option ${choice===i?"selected":""} ${answered&&i===e.correct?"correct":""} ${answered&&choice===i&&i!==e.correct?"wrong":""}" ${answered?"disabled":""} onclick="chooseDiscoveryQuiz('${w.id}',${i})">${String.fromCharCode(65+i)}. ${esc(opt)}</button>`).join("")}</div>
+   <div class=quiz-options>${e.options.slice(0,4).map((opt,i)=>`<button type="button" class="quiz-option ${choice===i?"selected":""} ${answered&&i===e.correct?"correct":""} ${answered&&choice===i&&i!==e.correct?"wrong":""}" ${answered?"disabled":""} onclick="chooseDiscoveryQuiz('${w.id}',${i})">${String.fromCharCode(65+i)}. ${esc(opt)}</button>`).join("")}</div>
    ${answered?`<div class=edu-tip><strong>${correct?"✅ Bien vu !":"💡 À retenir"}</strong>${esc(e.explanation)}</div>`:`<p class=muted>Choisis une réponse pour afficher l’explication.</p>`}
    ${d?.learning_note?`<div class=learning-card><b>La leçon de ce verre</b><div>${esc(d.learning_note)}</div></div>`:""}
    <div class=discovery-summary>
@@ -1868,11 +2304,11 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
     <div class=row><span>💪 Corps</span><b>${sensoryLabel(a.scores?.body)}</b></div>
     <div class=row><span>❤️ Plaisir</span><b>${a.note?`${a.note}/10`:"—"}</b></div>
    </div>
-   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button class=btn ${(!a.note||!answered)?"disabled":""} ${(!a.note||!answered)?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button type="button" class=btn ${(!a.note||!answered)?"disabled":""} ${(!a.note||!answered)?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
    ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:""}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:""}
    </div>`;
  }
- return `<div class=card><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${discoveryProgress(step)}${body}</div>${guideHtml()}`;
+ return `<div class="card player-sheet discovery-player-sheet"><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${discoveryProgress(step)}${body}</div>${guideHtml()}`;
 }
 
 async function renderPlayerTasting(){
@@ -1917,9 +2353,9 @@ const REGION_GRAPE_GUIDE=[
 
 function regionGrapeGuideHtml(){
  return `<details class="reference-guide">
-   <summary><span>🗺️ Aide : cépages par grandes régions</span><span>⌄</span></summary>
+   <summary><span>🗺️ Mémo général : régions & cépages</span><span>⌄</span></summary>
    <div class="reference-guide-body">
-     <p class="small muted">Mémo indicatif : ce sont les cépages les plus courants, pas une règle absolue. Un vin peut être un assemblage ou sortir de ces exemples.</p>
+     <p class="small muted">Référence générale, indépendante de la bouteille en cours : principaux cépages par région, à titre indicatif.</p>
      <div class="reference-search-wrap"><input type="search" class="reference-search" placeholder="Rechercher Rhône, Syrah, Bourgogne…" oninput="filterRegionGrapeGuide(this)"></div>
      <div class="reference-grid">
        ${REGION_GRAPE_GUIDE.map(r=>`<div class="reference-card" data-guide-search="${esc([r.region,...r.grapes].join(" "))}">
@@ -1949,9 +2385,9 @@ function filterRegionGrapeGuide(input){
 
 function blindGuessForm(w,a){
  return `${metric("👁️ Intensité visuelle","look",a)}${metric("👃 Intensité aromatique","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
- <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
- <div class=section><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
- <div class=grid>
+ <div class="section player-aromas"><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
+ <div class="section player-note"><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
+ <div class="grid player-guess-grid">
   <div><label>💰 Prix estimé (€)</label><input type=number min=.01 step=.5 value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="Ex. 15"></div>
   <div><label>🌍 Région / appellation</label>${regionPickerHtml(w.id,a.region||"","player")}</div>
   <div><label>🍇 Cépage(s)</label>${grapePickerHtml(w.id,answerGrapes(a),"player")}</div>
@@ -1960,12 +2396,12 @@ function blindGuessForm(w,a){
 
 function renderPlayerBlindTasting(w,a,ws){
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎯 À L’AVEUGLE</span></header>
- <div class=card>
-   <div class=wine-head><div><span class=pill>VIN ${game.current+1} / ${ws.length}</span><h1>À toi de trouver</h1><p class=muted>Aucun indice. Fais confiance à tes sens et engage une réponse.</p></div><div class=emoji>${ICON[w.type]}</div></div>
+ <div class="card player-sheet">
+   <div class=wine-head><div><span class=pill>VIN ${game.current+1} / ${ws.length}</span><h1>À toi de trouver</h1><p class=muted>Aucun indice spécifique au vin. Fais confiance à tes sens et utilise le mémo général si besoin.</p></div><div class=emoji>${ICON[w.type]}</div></div>
    <div class=notice><b>🎯 Objectif :</b> identifier au mieux le prix, la région et les cépages. Maximum : 11 points.</div>
    ${regionGrapeGuideHtml()}
    ${blindGuessForm(w,a)}
-   <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🎯 Verrouiller ma réponse</button></div>
+   <div class="card sticky player-action" style="margin-top:18px"><button type="button" class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🎯 Verrouiller ma réponse</button></div>
  </div>`;
 }
 
@@ -1975,7 +2411,7 @@ async function renderPlayerChallengeTasting(w,a,ws){
  const factor=challengeFactor(a);
  const potential=Math.round(11*factor*100)/100;
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🥂 CHALLENGE</span></header>
- <div class=card>
+ <div class="card player-sheet">
    <div class=wine-head><div><span class=pill>VIN ${game.current+1} / ${ws.length}</span><h1>Jusqu’où prends-tu le risque ?</h1><p class=muted>Tu peux demander de l’aide, mais chaque indice réduit ton score potentiel.</p></div><div class=emoji>🥂</div></div>
    <div class=scorebox>
      <div class=scoreitem><span>Indices utilisés</span><b>${level}/2</b></div>
@@ -1985,16 +2421,16 @@ async function renderPlayerChallengeTasting(w,a,ws){
    <div class=learning-card>
      <b>💡 Zone d’indices</b>
      <div class=muted>0 indice = 100 % · 1 indice = 75 % · 2 indices = 50 %</div>
-     ${level>=1?`<p><b>Indice 1 :</b> ${esc(hints.hint1||"Observe les marqueurs dominants.")}</p>`:`<button class="btn secondary" onclick="revealHint('${w.id}',1)">Débloquer l’indice 1 → score ×0,75</button>`}
-     ${level>=2?`<p><b>Indice 2 :</b> ${esc(hints.hint2||"Replace le vin dans son origine probable.")}</p>`:level>=1?`<button class="btn secondary" onclick="revealHint('${w.id}',2)">Débloquer l’indice 2 → score ×0,50</button>`:""}
+     ${level>=1?`<p><b>Indice 1 :</b> ${esc(hints.hint1||"Observe les marqueurs dominants.")}</p>`:`<button type="button" class="btn secondary" onclick="revealHint('${w.id}',1)">Débloquer l’indice 1 → score ×0,75</button>`}
+     ${level>=2?`<p><b>Indice 2 :</b> ${esc(hints.hint2||"Replace le vin dans son origine probable.")}</p>`:level>=1?`<button type="button" class="btn secondary" onclick="revealHint('${w.id}',2)">Débloquer l’indice 2 → score ×0,50</button>`:""}
    </div>
    ${regionGrapeGuideHtml()}
    ${blindGuessForm(w,a)}
-   <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🥂 Valider mon challenge</button></div>
+   <div class="card sticky player-action" style="margin-top:18px"><button type="button" class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🥂 Valider mon challenge</button></div>
  </div>`;
 }
 function metric(label,key,a){
- return `<div class=section><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n},this)">${n}</button>`).join("")}</div></div>`;
+ return `<div class="section player-metric"><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button type="button" class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n},this)">${n}</button>`).join("")}</div></div>`;
 }
 async function setScore(wineId,key,n,button=null){
  if(button){
@@ -2074,14 +2510,32 @@ async function upsertAnswer(wineId,patch){
  }
 }
 async function submitAnswer(wineId){
+ const key=`${game.id}:${wineId}:${user.id}`;
+
+ // A mobile user can tap "Valider" immediately after changing a criterion.
+ // Wait for the pending serialized save so validation always uses the latest state.
+ const pending=answerWriteQueues.get(key);
+ if(pending)await pending.catch(()=>{});
+
  const a=await getAnswer(wineId,true);
  if(a.done)return;
  if(!a.note)return toast("Ajoute ta note globale.");
  if(game.experience_mode==="discovery"&&!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
  if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
- const r=await supabaseClient.from("answers").update({done:true}).eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).eq("done",false);
+
+ const r=await supabaseClient.from("answers")
+   .update({done:true})
+   .eq("game_id",game.id)
+   .eq("wine_id",wineId)
+   .eq("user_id",user.id)
+   .eq("done",false)
+   .select()
+   .maybeSingle();
+
  if(r.error)return toast(r.error.message);
- const key=`${game.id}:${wineId}:${user.id}`;answerCache.set(key,{...a,done:true});
+ if(!r.data)return toast("Cette réponse n’a pas pu être verrouillée. Vérifie que le vin est toujours ouvert.");
+
+ answerCache.set(key,r.data);
  renderPlayerTasting();
 }
 
@@ -2192,7 +2646,7 @@ async function renderHostTasting(){
    <p class=muted>${d?`${esc(regionLabel(d.region))} · ${esc((d.grapes||[]).join(" / "))}`:"Dégustation pédagogique en cours"}</p>
    <p><b>${answered}</b> / ${total} participants ont terminé le parcours.</p>
    <div class=notice>Découverte = observer → sentir → goûter → comprendre. Aucun classement de connaissance.</div>
-   <button class="btn gold" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;
+   <button type="button" class="btn gold" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;
    return;
  }
 
@@ -2207,14 +2661,14 @@ async function renderHostTasting(){
    <p><b>${answered}</b> / ${total} joueurs ont verrouillé leur challenge.</p>
    <div class=scorebox><div class=scoreitem><span>Sans indice</span><b>${noHint}</b></div><div class=scoreitem><span>1 indice</span><b>${oneHint}</b></div><div class=scoreitem><span>2 indices</span><b>${twoHints}</b></div></div>
    <div class=notice>Les joueurs choisissent eux-mêmes entre risque maximal et aide progressive.</div>
-   <button class="btn gold" onclick="revealWine()">🥂 Révéler et calculer les multiplicateurs</button></div>`;
+   <button type="button" class="btn gold" onclick="revealWine()">🥂 Révéler et calculer les multiplicateurs</button></div>`;
    return;
  }
 
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎯 À L’AVEUGLE</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><span class=pill>${TYPES[w.type]}</span><h1>Vin #${game.current+1}</h1>
- <p><b>${answered}</b> / ${total} joueurs ont validé.</p><div class=notice>${answered===total&&total>0?"Tout le monde a répondu. La révélation peut commencer.":"Aucun indice n’est disponible dans ce mode."}</div>
- <button class="btn gold" onclick="revealWine()">✨ Révéler le vin</button></div>`;
+ <p><b>${answered}</b> / ${total} joueurs ont validé.</p><div class=notice>${answered===total&&total>0?"Tout le monde a répondu. La révélation peut commencer.":"Aucun indice spécifique à la bouteille n’est disponible dans ce mode."}</div>
+ <button type="button" class="btn gold" onclick="revealWine()">✨ Révéler le vin</button></div>`;
 }
 async function revealWine(){
  const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
@@ -2252,7 +2706,7 @@ async function renderHostDiscoveryReveal(){
  ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
  <div class=card><h2>🧠 Mini-quiz</h2><p><b>${esc(edu.question)}</b></p><p>${quiz}/${aa.length} bonne${quiz>1?"s":""} réponse${aa.length>1?"s":""}.</p><div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><div class=stat><span>❤️ Note plaisir du groupe</span><strong>${aa.length?avg.toFixed(1)+"/10":"—"}</strong></div></div>
- <div class="card sticky"><button class=btn style="width:100%" onclick="nextWine()">${game.current+1>=game.wine_count?"Terminer la soirée":"Passer au vin suivant →"}</button></div>`;
+ <div class="card sticky"><button type="button" class=btn style="width:100%" onclick="nextWine()">${game.current+1>=game.wine_count?"Terminer la soirée":"Passer au vin suivant →"}</button></div>`;
 }
 async function renderPlayerDiscoveryReveal(){
  const pos=game.current;
@@ -2318,7 +2772,7 @@ async function renderHostChallengeReveal(){
  <div class=scorebox><div class=scoreitem><span>Sans indice</span><b>${noHint}/${rows.length}</b></div><div class=scoreitem><span>Indices moyens</span><b>${avgHints.toFixed(1)}</b></div><div class=scoreitem><span>Réponses</span><b>${rows.length}</b></div></div></div>
  <div class=card><h2>🥂 Risque vs résultat</h2><table><tr><th>Joueur</th><th>Indices</th><th>Brut</th><th>×</th><th>Final</th></tr>${rows.map(a=>`<tr><td>${esc(a.playerName)}</td><td>${a.hints}</td><td>${a.raw}/11</td><td>×${a.factor}</td><td><b>${a.adjusted}/11</b></td></tr>`).join("")}</table></div>
  ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
- <div class=card><h2>🏁 Classement Challenge</h2>${rankingHtml(dash.rows)}<button class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Challenge suivant":"Voir le résultat final"}</button></div>`;
+ <div class=card><h2>🏁 Classement Challenge</h2>${rankingHtml(dash.rows)}<button type="button" class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Challenge suivant":"Voir le résultat final"}</button></div>`;
 }
 
 async function renderHostReveal(){
@@ -2339,7 +2793,7 @@ async function renderHostReveal(){
  <div class=card><h2>🎖️ Récompenses du vin</h2>${awardCardsHtml(dash.awards)}</div>
  <div class=card><h2>🏁 Classement intermédiaire</h2><p class=muted>Classement cumulé après ${game.current+1} vin${game.current+1>1?"s":""}.</p>${rankingHtml(dash.rows)}</div>
  <div class=card><h2>🔎 Réponses détaillées</h2><table><tr><th>Joueur</th><th>Prix</th><th>Région</th><th>Cépage</th><th>Score</th></tr>${dash.current.map(a=>`<tr><td>${esc(a.playerName)}</td><td>${Number(a.price).toFixed(2)} €</td><td>${esc(regionLabel(a.region))}</td><td>${esc(answerGrapes(a).join(" / "))}</td><td><b>${scoreParts(a,rv,"blind").total}/11</b></td></tr>`).join("")}</table>
- <button class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Vin suivant":"Voir les résultats"}</button></div>`;
+ <button type="button" class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Vin suivant":"Voir les résultats"}</button></div>`;
 }
 async function renderPlayerReveal(){
  const rv=await getCurrentReveal();
@@ -2376,70 +2830,214 @@ async function nextWine(){
  if(r.error)toast(r.error.message);
 }
 
+
+function progressTrendStats(points){
+ if(!points.length)return {firstAvg:0,lastAvg:0,delta:0,best:null};
+ const avg=list=>list.reduce((sum,x)=>sum+x.percent,0)/Math.max(1,list.length);
+
+ // With few tastings compare first vs last; with more history smooth the trend.
+ const windowSize=points.length>=6?3:points.length>=4?2:1;
+ const firstAvg=avg(points.slice(0,windowSize));
+ const lastAvg=avg(points.slice(-windowSize));
+ const best=points.reduce((a,b)=>b.percent>a.percent?b:a,points[0]);
+
+ return {firstAvg,lastAvg,delta:lastAvg-firstAvg,best};
+}
+
+function progressChartHtml(points){
+ if(!points.length){
+   return `<div class="progress-empty"><div class=emoji>📈</div><b>Pas encore assez de données</b><p class=muted>Termine une dégustation À l’aveugle ou Challenge pour commencer à suivre ta progression.</p></div>`;
+ }
+
+ const W=Math.max(720,points.length*110),H=320;
+ const left=58,right=28,top=28,bottom=58;
+ const innerW=W-left-right,innerH=H-top-bottom;
+ const x=i=>points.length===1?left+innerW/2:left+(i/(points.length-1))*innerW;
+ const y=p=>top+innerH-(Math.max(0,Math.min(100,p))/100)*innerH;
+ const path=points.map((pt,i)=>`${i?"L":"M"} ${x(i).toFixed(1)} ${y(pt.percent).toFixed(1)}`).join(" ");
+ const grid=[0,25,50,75,100].map(v=>{
+   const yy=y(v);
+   return `<line x1="${left}" y1="${yy}" x2="${W-right}" y2="${yy}" class="progress-grid-line"/><text x="${left-10}" y="${yy+4}" text-anchor="end" class="progress-axis-label">${v}%</text>`;
+ }).join("");
+
+ const dots=points.map((pt,i)=>{
+   const xx=x(i),yy=y(pt.percent);
+   const shortDate=new Date(pt.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+   return `<g class="progress-point">
+     <circle cx="${xx}" cy="${yy}" r="8" tabindex="0">
+       <title>${shortDate} · ${pt.modeName} · ${pt.score}/${pt.possible} pts · ${pt.percent.toFixed(0)}%</title>
+     </circle>
+     <text x="${xx}" y="${Math.max(18,yy-14)}" text-anchor="middle" class="progress-value">${pt.percent.toFixed(0)}%</text>
+     <text x="${xx}" y="${H-22}" text-anchor="middle" class="progress-date">${shortDate}</text>
+   </g>`;
+ }).join("");
+
+ return `<div class="progress-chart-scroll"><svg class="progress-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution du pourcentage de points obtenus par dégustation">
+   ${grid}
+   <path d="${path}" class="progress-line"/>
+   ${dots}
+ </svg></div>`;
+}
 async function renderProfile(){
  if(!user||!profile)return home();
  document.body.dataset.screen="profile";updateGlobalHomeButton();
- const playersR=await supabaseClient.from("players").select("game_id,user_id,name,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
+
+ const playersR=await supabaseClient.from("players")
+   .select("game_id,user_id,name,created_at")
+   .eq("user_id",user.id)
+   .order("created_at",{ascending:false});
  if(playersR.error)return toast(playersR.error.message);
- const participations=playersR.data||[],gameIds=[...new Set(participations.map(p=>p.game_id))];
+
+ const participations=playersR.data||[];
+ const gameIds=[...new Set(participations.map(p=>p.game_id))];
  let games=[],answers=[],reveals=[];
+
  if(gameIds.length){
    const [gamesR,answersR,revealsR]=await Promise.all([
      supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").in("id",gameIds).order("created_at",{ascending:false}),
      supabaseClient.from("answers").select("game_id,wine_id,note,price,region,grapes,grape,hint_level,quiz_choice,done").eq("user_id",user.id).eq("done",true).in("game_id",gameIds),
      supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").in("game_id",gameIds)
    ]);
-   const err=gamesR.error||answersR.error||revealsR.error;if(err)return toast(err.message);
-   games=gamesR.data||[];answers=answersR.data||[];reveals=revealsR.data||[];
+   const err=gamesR.error||answersR.error||revealsR.error;
+   if(err)return toast(err.message);
+   games=gamesR.data||[];
+   answers=answersR.data||[];
+   reveals=revealsR.data||[];
  }
+
  const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
  const gameById=new Map(games.map(g=>[g.id,g]));
  const answersByGame=new Map();
- for(const a of answers){if(!answersByGame.has(a.game_id))answersByGame.set(a.game_id,[]);answersByGame.get(a.game_id).push(a)}
+ for(const a of answers){
+   if(!answersByGame.has(a.game_id))answersByGame.set(a.game_id,[]);
+   answersByGame.get(a.game_id).push(a);
+ }
+
  const completedGames=participations.map(p=>gameById.get(p.game_id)).filter(g=>g?.status==="finished");
+ const completedPlayedGames=completedGames.filter(g=>g.host_id!==user.id);
+ const completedCompetitivePlayedGames=completedPlayedGames.filter(g=>g.experience_mode!=="discovery");
+ const completedCompetitivePlayedIds=new Set(completedCompetitivePlayedGames.map(g=>g.id));
+
  let totalPts=0,maxPts=0,pricePts=0,regionPts=0,grapePts=0,totalPriceErr=0,priceCount=0;
  let favorite=null;
+
  for(const a of answers){
-   const rv=revealByWine.get(a.wine_id);if(!rv)continue;
+   const rv=revealByWine.get(a.wine_id);
+   if(!rv)continue;
    const gm=gameById.get(a.game_id)?.experience_mode||"blind";
-   if(gm!=="discovery"){
+   if(gm!=="discovery"&&completedCompetitivePlayedIds.has(a.game_id)){
      const s=scoreParts(a,rv,gm);
-     totalPts+=s.total;maxPts+=11;pricePts+=s.price;regionPts+=s.region;grapePts+=s.grape;
+     totalPts+=s.total;
+     pricePts+=s.price;
+     regionPts+=s.region;
+     grapePts+=s.grape;
      if(Number(rv.price)>0&&Number.isFinite(Number(a.price))){
-       totalPriceErr+=Math.abs(Number(a.price)-Number(rv.price))/Number(rv.price);priceCount++;
+       totalPriceErr+=Math.abs(Number(a.price)-Number(rv.price))/Number(rv.price);
+       priceCount++;
      }
    }
    if(!favorite||Number(a.note||0)>favorite.note)favorite={note:Number(a.note||0),rv};
  }
- const avgScore=maxPts?totalPts/maxPts*100:0,avgPriceErr=priceCount?totalPriceErr/priceCount*100:0;
+
+ // Maximum global basé sur toutes les bouteilles des dégustations compétitives terminées.
+ // Une absence de réponse compte donc bien comme 0 au lieu de réduire artificiellement le dénominateur.
+ maxPts=completedCompetitivePlayedGames
+   .reduce((sum,g)=>sum+(Number(g.wine_count||0)*11),0);
+
+ const avgScore=maxPts?totalPts/maxPts*100:0;
+ const avgPriceErr=priceCount?totalPriceErr/priceCount*100:0;
+
  const history=participations.map(p=>{
-   const g=gameById.get(p.game_id);if(!g)return null;
-   const ga=answersByGame.get(g.id)||[];let score=0,possible=0;
-   for(const a of ga){const rv=revealByWine.get(a.wine_id);if(!rv)continue;
-     if(g.experience_mode!=="discovery"){score+=knowledgeScore(a,rv,g.experience_mode);possible+=11}
+   const g=gameById.get(p.game_id);
+   if(!g)return null;
+   const ga=answersByGame.get(g.id)||[];
+   let score=0;
+
+   for(const a of ga){
+     const rv=revealByWine.get(a.wine_id);
+     if(!rv||g.experience_mode==="discovery")continue;
+     score+=knowledgeScore(a,rv,g.experience_mode);
    }
-   return {g,score,possible,count:ga.length,host:g.host_id===user.id};
+
+   const competitive=g.experience_mode!=="discovery";
+   const possible=competitive
+     ? (g.status==="finished"?Number(g.wine_count||0)*11:ga.length*11)
+     : 0;
+
+   return {
+     g,
+     score:Math.round(score*100)/100,
+     possible,
+     percent:possible?score/possible*100:null,
+     count:ga.length,
+     host:g.host_id===user.id
+   };
  }).filter(Boolean).sort((a,b)=>new Date(b.g.created_at)-new Date(a.g.created_at));
- document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><button class="btn secondary" onclick="home()">← Accueil</button></header>
+
+ const progression=history
+   .filter(h=>h.g.status==="finished"&&h.g.host_id!==user.id&&h.g.experience_mode!=="discovery"&&h.possible>0)
+   .sort((a,b)=>new Date(a.g.created_at)-new Date(b.g.created_at))
+   .map((h,i)=>({
+     index:i+1,
+     date:h.g.created_at,
+     score:h.score,
+     possible:h.possible,
+     percent:h.percent,
+     mode:h.g.experience_mode,
+     modeName:(EXPERIENCE[h.g.experience_mode]||EXPERIENCE.blind).name
+   }));
+
+ const trend=progressTrendStats(progression);
+ const deltaLabel=progression.length<2
+   ?"Encore trop tôt pour mesurer une tendance."
+   :trend.delta>1
+     ?`Tu progresses de ${trend.delta.toFixed(0)} points de pourcentage entre tes premières et dernières dégustations.`
+     :trend.delta<-1
+       ?`Tes dernières dégustations sont ${Math.abs(trend.delta).toFixed(0)} points sous tes premières.`
+       :"Ton niveau est globalement stable pour le moment.";
+
+ const deltaClass=trend.delta>1?"positive":trend.delta<-1?"negative":"neutral";
+
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><button type="button" class="btn secondary" onclick="home()">← Accueil</button></header>
+
  <div class=card>
-  <div class=profile-name><div class=avatar>${esc((profile.display_name||"?")[0].toUpperCase())}</div><div><span class=pill>MON PROFIL</span><h1 style="margin:5px 0">${esc(profile.display_name)}</h1><div class="small muted">${esc(user.email||"")}</div></div></div>
+  <div class=profile-name>
+   <div class=avatar>${esc((profile.display_name||"?")[0].toUpperCase())}</div>
+   <div><span class=pill>MON PROFIL</span><h1 style="margin:5px 0">${esc(profile.display_name)}</h1><div class="small muted">${esc(user.email||"")}</div></div>
+  </div>
   <div class=grid style="margin-top:18px"><div><label>Prénom / pseudo</label><input id=profileDisplayName maxlength=30 value="${esc(profile.display_name)}"></div></div>
-  <button class="btn secondary" onclick="saveProfile()">Enregistrer le profil</button>
+  <button type="button" class="btn secondary" onclick="saveProfile()">Enregistrer le profil</button>
  </div>
+
  <div class=card><h2>📊 Mes statistiques</h2><div class=metric-grid>
-  <div class=metric-card><span>Dégustations terminées</span><strong>${completedGames.length}</strong></div>
+  <div class=metric-card><span>Dégustations jouées</span><strong>${completedPlayedGames.length}</strong></div>
+  <div class=metric-card><span>Soirées organisées</span><strong>${completedGames.filter(g=>g.host_id===user.id).length}</strong></div>
   <div class=metric-card><span>Vins notés</span><strong>${answers.length}</strong></div>
-  <div class=metric-card><span>Score moyen</span><strong>${avgScore.toFixed(0)}%</strong></div>
+  <div class=metric-card><span>Score global compétitif</span><strong>${avgScore.toFixed(0)}%</strong><small>${Math.round(totalPts*100)/100}/${maxPts||0} pts</small></div>
   <div class=metric-card><span>Erreur prix moyenne</span><strong>${avgPriceErr.toFixed(0)}%</strong></div>
-  <div class=metric-card><span>Points prix</span><strong>${pricePts}</strong></div>
-  <div class=metric-card><span>Points régions</span><strong>${regionPts}</strong></div>
-  <div class=metric-card><span>Points cépages</span><strong>${grapePts}</strong></div>
+  <div class=metric-card><span>Points prix</span><strong>${Math.round(pricePts*100)/100}</strong></div>
+  <div class=metric-card><span>Points régions</span><strong>${Math.round(regionPts*100)/100}</strong></div>
+  <div class=metric-card><span>Points cépages</span><strong>${Math.round(grapePts*100)/100}</strong></div>
   <div class=metric-card><span>Vin préféré</span><strong style="font-size:15px">${favorite?esc(favorite.rv.name):"—"}</strong></div>
  </div></div>
+
+ <div class=card>
+   <div class=progress-head>
+     <div><span class=pill>PROGRESSION</span><h2 style="margin:8px 0 4px">📈 Est-ce que je m’améliore ?</h2><p class=muted>Chaque point représente une dégustation terminée. Le score est normalisé sur le maximum théorique, donc les soirées restent comparables quel que soit le nombre de vins.</p></div>
+     ${progression.length?`<div class="progress-best"><span>Record personnel</span><strong>${trend.best.percent.toFixed(0)}%</strong><small>${trend.best.score}/${trend.best.possible} pts</small></div>`:""}
+   </div>
+   ${progressChartHtml(progression)}
+   <div class="progress-summary ${deltaClass}">
+     <strong>${deltaLabel}</strong>
+     ${progression.length>=2?`<span>Début : ${trend.firstAvg.toFixed(0)}% · Récent : ${trend.lastAvg.toFixed(0)}%</span>`:""}
+   </div>
+   <p class="small muted" style="margin-top:10px">Les soirées 🎓 Découverte ne sont pas incluses dans cette courbe car elles n’utilisent pas le même système de points compétitif.</p>
+ </div>
+
  <div class=card><h2>📚 Historique</h2><div class=history-list>${history.map(h=>`<div class=history-item>
   <div><h3>${h.host?"👑 Soirée organisée":"🍷 Dégustation"} · ${new Date(h.g.created_at).toLocaleDateString("fr-FR")}</h3>
   <div class=muted>${(EXPERIENCE[h.g.experience_mode]||EXPERIENCE.blind).icon} ${(EXPERIENCE[h.g.experience_mode]||EXPERIENCE.blind).name} · Code ${esc(h.g.code)} · ${h.g.wine_count} vins · ${h.g.status==="finished"?"Terminée":h.g.status==="tasting"?"En cours":"Lobby"}</div></div>
-  <div><b>${h.possible?`${h.score}/${h.possible} pts`:"—"}</b><br><span class="small muted">${h.count} réponse${h.count>1?"s":""}</span></div>
+  <div class=history-score><b>${h.possible?`${h.score}/${h.possible} pts`:"—"}</b>${h.percent!=null?`<strong>${h.percent.toFixed(0)}%</strong>`:""}<span class="small muted">${h.count} réponse${h.count>1?"s":""}</span></div>
  </div>`).join("")||"<p class=muted>Aucune dégustation pour le moment.</p>"}</div></div>`;
 }
 
@@ -2471,7 +3069,7 @@ async function renderPlayerFinished(){
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 TON PARCOURS</span></header>
     <div class="card hero"><div class=emoji>🎓</div><h1>Dégustation terminée</h1><p class=muted>Tu as observé, senti, goûté et appris sur ${as.length} vin${as.length>1?"s":""}.</p></div>
     <div class=card><h2>Ce que tu as découvert</h2>${recap||"<p class=muted>Aucune fiche enregistrée.</p>"}</div>
-    <div class=card><button class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+    <div class=card><button type="button" class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
  }
 
@@ -2490,7 +3088,7 @@ async function renderPlayerFinished(){
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🥂 TON CHALLENGE</span></header>
      <div class="card hero"><div class=emoji>🥂</div><h1>${Math.round(adjusted*100)/100} points</h1><div class=scorebox><div class=scoreitem><span>Score brut</span><b>${raw}</b></div><div class=scoreitem><span>Indices utilisés</span><b>${hints}</b></div><div class=scoreitem><span>Efficacité</span><b>${eff}%</b></div></div><p class=muted>Ton résultat mesure à la fois ta précision et ta prise de risque.</p></div>
      <div class=card><h2>Challenge par challenge</h2>${recap||"<p class=muted>Aucune réponse enregistrée.</p>"}</div>
-     <div class=card><button class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+     <div class=card><button type="button" class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
  }
 
@@ -2510,7 +3108,7 @@ async function renderPlayerFinished(){
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>TON RÉCAP</span></header>
  <div class="card hero"><div class=emoji>🏆</div><h1>${Math.round(total*100)/100} points</h1><p class=muted>Maximum théorique : ${ws.length*11} points.</p></div>
  <div class=card><h2>Ton récapitulatif</h2>${recap||"<p class=muted>Aucune réponse enregistrée.</p>"}</div>
- <div class=card><button class="btn" onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+ <div class=card><button type="button" class="btn" onclick="renderProfile()">📚 Voir mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
 }
 async function renderHostResults(){
  const [ws,pss,rr,aa] = await Promise.all([
@@ -2545,7 +3143,7 @@ async function renderHostResults(){
     <div class="card hero"><div class=emoji>🎓</div><h1>Soirée Découverte terminée</h1><p class=muted>${ps.length} participant${ps.length>1?"s":""} · ${ws.length} vins explorés</p></div>
     <div class=card><h2>Ce qu’a préféré le groupe</h2>${wineStats.sort((a,b)=>b.avg-a.avg).map(x=>`<div class=wine-row><b>${ICON[x.w.type]} ${esc(x.rv.name)}</b><span class=pill>${x.count?x.avg.toFixed(1):"—"}/10</span><p class=muted>${esc(x.rv.learning_note||"")}</p></div>`).join("")}</div>
     <div class=card><h2>🧠 Compréhension</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><p class=muted>Le mode Découverte ne produit pas de classement compétitif : l’objectif est l’apprentissage collectif.</p></div>
-    <div class=card><button class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+    <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
  }
 
@@ -2584,7 +3182,7 @@ async function renderHostResults(){
      <div class=stat><span>💡 Indices moyens du groupe</span><strong>${groupHints.toFixed(1)}</strong><span class=muted>par réponse</span></div>
    </div></div>
    <div class=card><h2>Classement complet</h2><table><tr><th>#</th><th>Joueur</th><th>Final</th><th>Brut</th><th>Indices</th><th>Efficacité</th></tr>${rows.map(r=>`<tr><td>${r.rank}</td><td>${esc(r.name)}</td><td><b>${r.adjusted}</b></td><td>${r.raw}</td><td>${r.hints}</td><td>${Math.round(r.efficiency*100)}%</td></tr>`).join("")}</table></div>
-   <div class=card><button class="btn secondary" onclick="renderHostStats()">📊 Statistiques Challenge</button> <button class="btn secondary" onclick="renderProfile()">📚 Historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
+   <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Statistiques Challenge</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
  }
 
@@ -2640,8 +3238,8 @@ async function renderHostResults(){
   <div class=stat><span>❤️ Meilleur goût du groupe</span><strong>${esc(bestTaste)}</strong><span class=muted>Notes les plus proches du groupe</span></div>
  </div></div>
  <div class=card><h2>❤️ Favori de la soirée</h2>${favorite?`<div class=wine-row><div class=wine-head><b>${ICON[favorite.w.type]} ${esc(favorite.rv.name)}</b><span class=pill>${favorite.avg.toFixed(1)}/10</span></div><p>${esc(regionLabel(favorite.rv.region))} · ${esc((favorite.rv.grapes||[]).join(" / "))} · ${Number(favorite.rv.price).toFixed(2)} €</p></div>`:"<p class=muted>Aucune note.</p>"}</div>
- <div class=card><button class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button></div>
- <div class=card><button class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>
+ <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button></div>
+ <div class=card><button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>
  <div class=card><h2>Classement dégustateurs</h2><table><tr><th>#</th><th>Joueur</th><th>Total</th><th>Prix</th><th>Région</th><th>Cépages</th></tr>${rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}</td><td><b>${x.score}</b></td><td>${x.pricePts}</td><td>${x.regionPts}</td><td>${x.grapePts}</td></tr>`).join("")}</table></div>`;
 }
 async function renderHostStats(){
@@ -2678,7 +3276,7 @@ async function renderHostStats(){
    <p class="small muted">${aa.length} réponse${aa.length>1?"s":""}</p></div>`;
  }).join("");
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>STATISTIQUES</span></header>
- <div class="card hero"><div class=emoji>📊</div><h1>${game.experience_mode==="discovery"?"Statistiques pédagogiques":game.experience_mode==="challenge"?"Statistiques Challenge":"Statistiques à l’aveugle"}</h1><p class=muted>${game.experience_mode==="discovery"?"Notes de plaisir et progression collective.":game.experience_mode==="challenge"?"Précision, prise de risque et résultats bouteille par bouteille.":"Prix estimés, écarts et notes bouteille par bouteille."}</p><button class="btn secondary" onclick="renderHostResults()">← Retour aux résultats</button></div>
+ <div class="card hero"><div class=emoji>📊</div><h1>${game.experience_mode==="discovery"?"Statistiques pédagogiques":game.experience_mode==="challenge"?"Statistiques Challenge":"Statistiques à l’aveugle"}</h1><p class=muted>${game.experience_mode==="discovery"?"Notes de plaisir et progression collective.":game.experience_mode==="challenge"?"Précision, prise de risque et résultats bouteille par bouteille.":"Prix estimés, écarts et notes bouteille par bouteille."}</p><button type="button" class="btn secondary" onclick="renderHostResults()">← Retour aux résultats</button></div>
  ${cards||"<div class=card><p class=muted>Aucune statistique disponible.</p></div>"}`;
 }
 

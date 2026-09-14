@@ -147,3 +147,44 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - Ajoute un rollback visuel sur les sélecteurs région/cépages si Supabase refuse une écriture.
 - Nettoie les files d’écriture lors de la fermeture/changement de session.
 - Revalide les RPC frontend ↔ SQL, les handlers HTML, les fonctions SQL et la syntaxe JavaScript.
+
+## V3.5.7 — Courbe de progression personnelle
+- Ajoute une courbe de progression dans le profil/historique.
+- Un point = une dégustation compétitive terminée (Blind ou Challenge).
+- Métrique comparable : points obtenus / maximum théorique de la soirée.
+- Les vins non répondus comptent comme 0 dans le maximum possible.
+- Affiche record personnel, tendance premières vs dernières dégustations et pourcentage dans chaque ligne d'historique.
+- Le mode Découverte est exclu de la courbe car il n'utilise pas le même scoring compétitif.
+
+## V3.5.8 — Fiche joueur mobile-first
+- Layout dédié à la fiche de dégustation joueur.
+- Note /10 affichée en 2 lignes de 5 boutons sur mobile pour éviter l’écrasement.
+- Prix, région et cépages empilés verticalement sur petit écran.
+- Sélecteurs ouverts placés au-dessus de l’action sticky pour éviter les chevauchements.
+- Bouton de validation sticky plus compact et mieux isolé.
+- Blocs Challenge, guide cépages/régions et parcours Découverte rendus responsives.
+- Gestion spécifique des écrans 360–430 px.
+
+## V3.5.9 — Revue code + UX
+### Correctifs code
+- `submitAnswer()` attend désormais toutes les écritures de réponse en cours avant de verrouiller la fiche.
+- La validation vérifie qu'une ligne a réellement été verrouillée.
+- Correction de la tendance historique pour 2–5 dégustations.
+- Les statistiques de progression excluent les soirées organisées et les parties encore en cours.
+- Les boutons explicites utilisent `type="button"` pour éviter de futurs effets de soumission implicite.
+
+### Correctifs UX
+- Le bouton flottant Accueil ne recouvre plus le bouton sticky de validation.
+- Les pickers restent au-dessus des actions flottantes.
+- Clarification : le mémo régions/cépages est une référence générale, pas un indice spécifique à la bouteille.
+- Meilleure gestion du header sur petits écrans.
+- Focus clavier visible.
+- La courbe d'historique s'élargit avec le nombre de dégustations pour rester lisible.
+
+
+## V3.6.0 — Branding / icônes
+- Nouvelle icône Blind Wine intégrée au navigateur et à la PWA.
+- `favicon-32.png` pour l’onglet navigateur.
+- `apple-touch-icon.png` pour iPhone/iPad.
+- `icon-192.png` et `icon-512.png` pour la web app installée.
+- `og-preview.jpg` pour les aperçus de partage/liens.

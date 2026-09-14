@@ -1,5 +1,5 @@
-const CACHE="blind-wine-v356-full-code-review";
-const SHELL=["./","./index.html","./config.js","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
+const CACHE="blind-wine-v360-brand-assets";
+const SHELL=["./","./index.html","./config.js","./manifest.webmanifest","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./favicon-32.png","./og-preview.jpg"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
