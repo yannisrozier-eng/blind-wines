@@ -610,73 +610,161 @@ tr:last-child td{border-bottom:0}
 
 
 .choice-search-wrap{
- display:flex;align-items:center;gap:8px;
- position:sticky;top:0;z-index:2;
- padding:10px;background:var(--card,#171717);
- border-bottom:1px solid rgba(255,255,255,.08);
+ display:flex;
+ align-items:center;
+ gap:8px;
+ position:sticky;
+ top:0;
+ z-index:4;
+ padding:10px;
+ background:#fff;
+ border-bottom:1px solid var(--line);
 }
 .choice-search{
- width:100%;margin:0!important;
+ width:100%!important;
  min-height:44px;
+ margin:0!important;
+ padding:11px 13px!important;
+ border:1px solid var(--line)!important;
+ border-radius:11px!important;
+ background:#fff!important;
+ color:var(--ink)!important;
+ font:inherit!important;
+ -webkit-text-fill-color:var(--ink);
+ caret-color:var(--wine);
+ outline:none;
+}
+.choice-search::placeholder{
+ color:#8d8580!important;
+ opacity:1;
+}
+.choice-search:focus{
+ border-color:#a56c81!important;
+ box-shadow:0 0 0 4px rgba(111,36,61,.08)!important;
+}
+.choice-search::-webkit-search-cancel-button{
+ -webkit-appearance:none;
+ appearance:none;
 }
 .choice-search-clear{
- width:40px;height:40px;flex:0 0 40px;
- border:0;border-radius:10px;
- background:rgba(255,255,255,.08);color:inherit;
- font-size:22px;cursor:pointer;
+ width:40px;
+ height:40px;
+ flex:0 0 40px;
+ border:1px solid var(--line);
+ border-radius:10px;
+ background:var(--surface-soft);
+ color:var(--ink);
+ font-size:22px;
+ line-height:1;
+ cursor:pointer;
 }
 .searchable-picker{
  position:relative;
+ color:var(--ink);
 }
 .searchable-picker>summary{
- display:flex;align-items:center;justify-content:space-between;gap:12px;
- min-height:46px;padding:11px 13px;
- border:1px solid rgba(255,255,255,.12);
- border-radius:12px;cursor:pointer;
- background:rgba(255,255,255,.035);
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ min-height:46px;
+ padding:11px 13px;
+ border:1px solid var(--line);
+ border-radius:12px;
+ cursor:pointer;
+ background:#fff;
+ color:var(--ink);
  list-style:none;
 }
 .searchable-picker>summary::-webkit-details-marker{display:none}
 .searchable-picker[open]>summary{
- border-bottom-left-radius:0;border-bottom-right-radius:0;
+ border-bottom-left-radius:0;
+ border-bottom-right-radius:0;
+ border-color:#c9bcb4;
 }
 .choice-picker-body{
- max-height:330px;overflow:auto;
- border:1px solid rgba(255,255,255,.12);
- border-top:0;border-radius:0 0 12px 12px;
- background:var(--card,#171717);
+ max-height:330px;
+ overflow:auto;
+ -webkit-overflow-scrolling:touch;
+ border:1px solid var(--line);
+ border-top:0;
+ border-radius:0 0 12px 12px;
+ background:#fff;
+ color:var(--ink);
 }
 .choice-list{display:flex;flex-direction:column}
 .choice-option{
- display:flex;align-items:center;justify-content:space-between;gap:12px;
- width:100%;padding:11px 12px;
- border:0;border-bottom:1px solid rgba(255,255,255,.06);
- background:transparent;color:inherit;text-align:left;cursor:pointer;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ width:100%;
+ padding:12px 13px;
+ border:0;
+ border-bottom:1px solid #f0ebe6;
+ background:#fff;
+ color:var(--ink);
+ text-align:left;
+ cursor:pointer;
+ font:inherit;
 }
-.choice-option span:first-child{display:flex;flex-direction:column;gap:2px}
-.choice-option small{opacity:.62;font-size:.78rem}
-.choice-option.selected{background:rgba(212,175,55,.12)}
-.choice-option:hover{background:rgba(255,255,255,.055)}
-.choice-clear{opacity:.78}
-.choice-empty{padding:18px;text-align:center;opacity:.65}
+.choice-option span:first-child{
+ display:flex;
+ flex-direction:column;
+ gap:2px;
+}
+.choice-option small{
+ color:#817772;
+ font-size:.78rem;
+}
+.choice-option.selected{
+ background:var(--wine-soft);
+ color:var(--wine-dark);
+}
+.choice-option:hover{background:#faf7f4}
+.choice-clear{color:#7d736d}
+.choice-empty{
+ padding:18px;
+ text-align:center;
+ color:#817772;
+ background:#fff;
+}
 .grape-choice-list{
- display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
  gap:0;
+ background:#fff;
 }
 .grape-option{
- display:flex;align-items:center;gap:9px;
- padding:11px 12px;margin:0;
- border-bottom:1px solid rgba(255,255,255,.06);
+ display:flex;
+ align-items:center;
+ gap:9px;
+ padding:12px 13px;
+ margin:0;
+ border-bottom:1px solid #f0ebe6;
+ background:#fff;
+ color:var(--ink);
  cursor:pointer;
 }
-.grape-option.selected{background:rgba(212,175,55,.12)}
-.grape-option input{width:auto;margin:0}
+.grape-option.selected{
+ background:var(--wine-soft);
+ color:var(--wine-dark);
+}
+.grape-option input{
+ width:20px;
+ height:20px;
+ margin:0;
+ accent-color:var(--wine);
+}
+.search-hidden,
+[hidden]{
+ display:none!important;
+}
 @media(max-width:560px){
  .choice-picker-body{max-height:52vh}
  .grape-choice-list{grid-template-columns:1fr}
  .choice-search-wrap{padding:8px}
 }
-
 </style></head>
 <body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
 <button id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
@@ -691,6 +779,9 @@ let supabaseClient=null,user=null,profile=null,game=null,role=null,player=null,c
 let wineCache=null;
 const answerCache=new Map();
 let routeSeq=0;
+const pickerObserver=new MutationObserver(()=>bindSearchablePickers(document));
+pickerObserver.observe(document.getElementById("app"),{childList:true,subtree:true});
+
 
 const TYPES={rose:"Rosé",white:"Blanc",red:"Rouge"};
 const ICON={rose:"🌸",white:"🥂",red:"🍷"};
@@ -953,7 +1044,12 @@ function normalizeChoiceSearch(value){
  return String(value||"")
    .normalize("NFD")
    .replace(/[\u0300-\u036f]/g,"")
+   .replace(/œ/g,"oe")
+   .replace(/æ/g,"ae")
+   .replace(/[’'`´]/g," ")
+   .replace(/[-_/.,;:()]/g," ")
    .toLowerCase()
+   .replace(/\s+/g," ")
    .trim();
 }
 
@@ -961,15 +1057,26 @@ function filterChoiceOptions(input){
  const root=input.closest(".searchable-picker");
  if(!root)return;
  const q=normalizeChoiceSearch(input.value);
- root.querySelectorAll("[data-search-value]").forEach(el=>{
-   const text=normalizeChoiceSearch(el.dataset.searchValue||"");
-   el.hidden=Boolean(q)&&!text.includes(q);
- });
- const empty=root.querySelector(".choice-empty");
- if(empty){
-   const visible=Array.from(root.querySelectorAll("[data-search-value]")).some(el=>!el.hidden);
-   empty.hidden=visible;
+ const options=Array.from(root.querySelectorAll("[data-search-value]"));
+ let visibleCount=0;
+ for(const el of options){
+   const haystack=normalizeChoiceSearch(el.dataset.searchValue||el.textContent||"");
+   const visible=!q||haystack.includes(q);
+   el.hidden=!visible;
+   el.classList.toggle("search-hidden",!visible);
+   if(visible)visibleCount++;
  }
+ const empty=root.querySelector(".choice-empty");
+ if(empty)empty.hidden=visibleCount!==0;
+}
+
+function bindSearchablePickers(root=document){
+ root.querySelectorAll(".choice-search").forEach(input=>{
+   if(input.dataset.searchBound==="1")return;
+   input.dataset.searchBound="1";
+   input.addEventListener("input",()=>filterChoiceOptions(input));
+   input.addEventListener("search",()=>filterChoiceOptions(input));
+ });
 }
 
 function clearChoiceSearch(input){

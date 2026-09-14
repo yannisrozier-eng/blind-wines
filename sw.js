@@ -1,4 +1,4 @@
-const CACHE="blind-wine-v352-searchable-pickers";
+const CACHE="blind-wine-v353-search-fix";
 const SHELL=["./","./index.html","./config.js","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

@@ -119,3 +119,10 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - Les chemins de régions sont visibles (ex. appellation · région · pays) pour éviter les ambiguïtés.
 - Optimisé mobile : liste scrollable, champ de recherche sticky, bouton d'effacement.
 - Les arômes restent volontairement sous forme de chips visuelles pour préserver l'expérience sensorielle.
+
+## V3.5.3 — Correctif recherche
+- Corrige le contraste des sélecteurs recherchables : fond blanc, texte lisible et cohérent avec le thème de l'app.
+- Corrige le filtrage dynamique : les résultats masqués le sont réellement même avec les styles flex/grid.
+- Recherche déclenchée à chaque frappe via `input`, avec fallback `addEventListener`.
+- Recherche insensible à la casse et aux accents : `rhone`, `Rhône` et `RHÔNE` correspondent.
+- Normalisation supplémentaire des apostrophes, tirets et ponctuation pour améliorer les recherches.
