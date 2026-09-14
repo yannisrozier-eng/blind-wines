@@ -188,3 +188,23 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - `apple-touch-icon.png` pour iPhone/iPad.
 - `icon-192.png` et `icon-512.png` pour la web app installée.
 - `og-preview.jpg` pour les aperçus de partage/liens.
+
+
+## V3.6.1 — Refactor frontend
+Le gros `index.html` a été séparé sans changement de schéma Supabase.
+
+### Architecture
+- `index.html` — shell HTML et dépendances
+- `styles.css` — styles et responsive
+- `js/core.js` — état partagé, catalogues, scoring, pickers
+- `js/auth.js` — Auth / profil
+- `js/game.js` — session, navigation, création/join, Realtime
+- `js/discovery.js` — mode Découverte
+- `js/challenge.js` — mode Challenge
+- `js/player.js` — fiche joueur / réponses
+- `js/reveal.js` — reveal et helpers de classement
+- `js/host.js` — lobby/configuration/contrôle hôte
+- `js/history.js` — historique / progression
+- `js/main.js` — bootstrap, réseau, service worker
+
+Les scripts restent des scripts classiques chargés explicitement, afin de conserver les handlers HTML globaux et de minimiser le risque de régression pendant cette étape de refactor.
