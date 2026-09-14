@@ -132,3 +132,18 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - Cause : `game_id` est à la fois une colonne de sortie de `RETURNS TABLE` et une colonne de `players`.
 - `ON CONFLICT (game_id,user_id)` est remplacé par `ON CONFLICT ON CONSTRAINT players_game_id_user_id_key`.
 - Aucun changement d'API frontend.
+
+## V3.5.5 — Contrôles joueur + aide régions/cépages
+- Les boutons de la fiche joueur donnent désormais un retour visuel immédiat après chaque clic.
+- Intensités, arômes et note plaisir se sélectionnent sans attendre un rerender ou une réponse Realtime.
+- Renforcement tactile mobile avec `touch-action: manipulation`.
+- Ajout d'un mémo repliable « cépages par grandes régions » dans Blind et Challenge.
+- Le mémo possède sa propre recherche insensible aux accents/casse grâce à la normalisation existante.
+- Données volontairement indicatives : les cépages affichés sont les principaux cépages usuels, pas une règle exhaustive.
+
+## V3.5.6 — Revue complète de code
+- Sérialise les écritures de réponses : les clics rapides ne peuvent plus écraser la dernière sélection avec une requête plus ancienne.
+- Corrige le vrai état `disabled` du bouton final en mode Découverte.
+- Ajoute un rollback visuel sur les sélecteurs région/cépages si Supabase refuse une écriture.
+- Nettoie les files d’écriture lors de la fermeture/changement de session.
+- Revalide les RPC frontend ↔ SQL, les handlers HTML, les fonctions SQL et la syntaxe JavaScript.

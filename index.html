@@ -765,6 +765,90 @@ tr:last-child td{border-bottom:0}
  .grape-choice-list{grid-template-columns:1fr}
  .choice-search-wrap{padding:8px}
 }
+
+/* Player controls: explicit touch/click behavior */
+.scale button,.chips button,.quiz-option,.btn,.mode-card,.choice-option,.grape-option{
+ touch-action:manipulation;
+ -webkit-tap-highlight-color:rgba(111,36,61,.14);
+}
+.scale button,.chips button,.quiz-option{
+ cursor:pointer;
+ position:relative;
+ z-index:1;
+}
+.scale button.sel,.chip.sel{
+ background:var(--wine)!important;
+ color:#fff!important;
+ border-color:var(--wine)!important;
+ transform:translateY(-1px);
+}
+.reference-guide{
+ margin:16px 0;
+ border:1px solid var(--line);
+ border-radius:16px;
+ background:#fff;
+ overflow:hidden;
+}
+.reference-guide>summary{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ padding:14px 16px;
+ list-style:none;
+ cursor:pointer;
+ font-weight:850;
+ color:var(--wine-dark);
+ background:var(--wine-soft);
+}
+.reference-guide>summary::-webkit-details-marker{display:none}
+.reference-guide-body{padding:14px}
+.reference-search-wrap{margin:10px 0 14px}
+.reference-search{
+ width:100%!important;
+ padding:12px 13px!important;
+ border:1px solid var(--line)!important;
+ border-radius:12px!important;
+ background:#fff!important;
+ color:var(--ink)!important;
+ font:inherit!important;
+ outline:none;
+}
+.reference-search:focus{
+ border-color:#a56c81!important;
+ box-shadow:0 0 0 4px rgba(111,36,61,.08)!important;
+}
+.reference-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:10px;
+}
+.reference-card{
+ padding:12px;
+ border:1px solid var(--line);
+ border-radius:13px;
+ background:var(--surface-soft);
+}
+.reference-card h4{margin:0 0 9px;font-size:14px}
+.reference-card .chips{gap:5px}
+.chip.static{
+ cursor:default;
+ font-size:12px;
+ padding:6px 8px;
+ background:#fff;
+}
+.reference-empty{padding:18px;text-align:center;color:var(--muted)}
+@media(max-width:560px){
+ .reference-grid{grid-template-columns:1fr}
+}
+
+
+.btn.disabled{
+ opacity:.45;
+ cursor:not-allowed;
+ box-shadow:none;
+ pointer-events:none;
+}
 </style></head>
 <body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
 <button id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
@@ -778,6 +862,7 @@ const SESSION_KEY="blindwine_v27_session";
 let supabaseClient=null,user=null,profile=null,game=null,role=null,player=null,channel=null;
 let wineCache=null;
 const answerCache=new Map();
+const answerWriteQueues=new Map();
 let routeSeq=0;
 const pickerObserver=new MutationObserver(()=>bindSearchablePickers(document));
 pickerObserver.observe(document.getElementById("app"),{childList:true,subtree:true});
@@ -934,6 +1019,7 @@ function saveSession(){
 function clearSession(){
   localStorage.removeItem(SESSION_KEY);
   game=role=player=null;
+  answerWriteQueues.clear();
   if(channel&&supabaseClient){supabaseClient.removeChannel(channel);channel=null;}
 }
 function regionObj(id){return REGION_CATALOG.find(r=>r.id===id)}
@@ -1123,14 +1209,25 @@ function regionPickerHtml(id,selected="",mode="player"){
 
 async function chooseRegion(mode,id,regionId,button){
  const picker=button.closest(".region-picker");
- if(mode==="host")await updateWineSecret(id,"region",regionId||null);
- else await setAnswer(id,"region",regionId||null);
- if(!picker)return;
- const summary=picker.querySelector("summary span:first-child");
+ const summary=picker?.querySelector("summary span:first-child");
+ const oldLabel=summary?.textContent||"";
+ const oldSelected=picker?.querySelector(".choice-option.selected")||null;
+
  if(summary)summary.textContent=regionId?regionLabel(regionId):"Choisir une région / appellation";
- picker.querySelectorAll(".choice-option").forEach(x=>x.classList.remove("selected"));
+ picker?.querySelectorAll(".choice-option").forEach(x=>x.classList.remove("selected"));
  if(regionId)button.classList.add("selected");
- picker.open=false;
+
+ const saved=mode==="host"
+   ? await updateWineSecret(id,"region",regionId||null)
+   : await setAnswer(id,"region",regionId||null);
+
+ if(!saved){
+   if(summary)summary.textContent=oldLabel;
+   picker?.querySelectorAll(".choice-option").forEach(x=>x.classList.remove("selected"));
+   oldSelected?.classList.add("selected");
+   return;
+ }
+ if(picker)picker.open=false;
 }
 
 function grapePickerHtml(id,selected,mode){
@@ -1148,12 +1245,24 @@ function grapePickerHtml(id,selected,mode){
 }
 async function handleGrapeCheck(mode,id,input){
  const box=input.closest(".grape-picker");
- input.closest(".grape-option")?.classList.toggle("selected",input.checked);
+ const option=input.closest(".grape-option");
+ const previousChecked=!input.checked;
+ const oldSummary=box.querySelector("summary span:first-child")?.textContent||"";
+
+ option?.classList.toggle("selected",input.checked);
  const values=Array.from(box.querySelectorAll("input[type=checkbox]:checked")).map(x=>x.value);
  const summary=box.querySelector("summary span:first-child");
- summary.textContent=values.length?`${values.length} cépage${values.length>1?"s":""} sélectionné${values.length>1?"s":""}`:"Choisir les cépages";
- if(mode==="host")await updateWineGrapes(id,values);
- else await setPlayerGrapes(id,values);
+ if(summary)summary.textContent=values.length?`${values.length} cépage${values.length>1?"s":""} sélectionné${values.length>1?"s":""}`:"Choisir les cépages";
+
+ const saved=mode==="host"
+   ? await updateWineGrapes(id,values)
+   : await setPlayerGrapes(id,values);
+
+ if(!saved){
+   input.checked=previousChecked;
+   option?.classList.toggle("selected",previousChecked);
+   if(summary)summary.textContent=oldSummary;
+ }
 }
 function guideHtml(){
  return `<div class=card><h2>🗺️ Aide régions & cépages</h2><p class=muted>Repère rapide pour t'aider pendant la dégustation.</p><div class=grid>${
@@ -1371,7 +1480,7 @@ async function deleteCurrentGame(){
  home();
 }
 function home(){
- wineCache=null;answerCache.clear();
+ wineCache=null;answerCache.clear();answerWriteQueues.clear();
  document.body.dataset.screen="home";
  const preset=new URLSearchParams(location.search).get("game")||"";
  const pname=profile?.display_name||"Joueur";
@@ -1612,7 +1721,8 @@ async function updateWineType(id,type){
 async function updateWineSecret(wineId,key,val){
  const patch={[key]:val};
  const r=await supabaseClient.from("wine_secrets").update(patch).eq("wine_id",wineId);
- if(r.error)toast(r.error.message);
+ if(r.error){toast(r.error.message);return null}
+ return true;
 }
 
 async function updateQuizOptions(wineId,text){
@@ -1621,7 +1731,8 @@ async function updateQuizOptions(wineId,text){
 }
 async function updateWineGrapes(wineId,values){
  const r=await supabaseClient.from("wine_secrets").update({grapes:values}).eq("wine_id",wineId);
- if(r.error)toast(r.error.message);
+ if(r.error){toast(r.error.message);return null}
+ return true;
 }
 async function startGame(){
  const ws=await getHostWines();
@@ -1730,14 +1841,14 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
  if(step===2){
    body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>
    ${metric("Intensité aromatique","nose",a)}
-   <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'))">${esc(x)}</button>`).join("")}</div></div>
+   <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.nose_tip)}</div>
    <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
  }
  if(step===3){
    body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>
    ${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
-   <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswer('${w.id}','note',${n})">${n}</button>`).join("")}</div></div>
+   <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.palate_tip)}</div>
    <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',2)">← Le nez</button><button class=btn onclick="setDiscoveryStep('${w.id}',4)">Comprendre →</button></div></div>`;
  }
@@ -1757,7 +1868,7 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
     <div class=row><span>💪 Corps</span><b>${sensoryLabel(a.scores?.body)}</b></div>
     <div class=row><span>❤️ Plaisir</span><b>${a.note?`${a.note}/10`:"—"}</b></div>
    </div>
-   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button class=btn ${(!a.note||!answered)?"disabled":""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
+   <div class=discovery-nav><button class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button class=btn ${(!a.note||!answered)?"disabled":""} ${(!a.note||!answered)?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
    ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:""}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:""}
    </div>`;
  }
@@ -1788,10 +1899,58 @@ async function renderPlayerTasting(){
  return renderPlayerBlindTasting(w,a,ws);
 }
 
+
+const REGION_GRAPE_GUIDE=[
+ {region:"Bordeaux",icon:"🍷",grapes:["Cabernet Sauvignon","Merlot","Cabernet Franc","Petit Verdot","Sémillon","Sauvignon blanc"]},
+ {region:"Bourgogne",icon:"🍇",grapes:["Pinot noir","Chardonnay","Aligoté","Gamay"]},
+ {region:"Rhône Nord",icon:"🌄",grapes:["Syrah","Viognier","Marsanne","Roussanne"]},
+ {region:"Rhône Sud",icon:"☀️",grapes:["Grenache","Syrah","Mourvèdre","Cinsault","Roussanne","Grenache blanc"]},
+ {region:"Loire",icon:"🌿",grapes:["Sauvignon blanc","Chenin blanc","Cabernet Franc","Melon de Bourgogne","Gamay"]},
+ {region:"Alsace",icon:"🌼",grapes:["Riesling","Gewurztraminer","Pinot gris","Pinot blanc"]},
+ {region:"Champagne",icon:"🥂",grapes:["Chardonnay","Pinot noir","Meunier"]},
+ {region:"Provence",icon:"🌸",grapes:["Grenache","Cinsault","Syrah","Mourvèdre","Tibouren","Rolle / Vermentino"]},
+ {region:"Languedoc-Roussillon",icon:"🌞",grapes:["Grenache","Syrah","Mourvèdre","Carignan","Cinsault","Picpoul"]},
+ {region:"Sud-Ouest",icon:"🗺️",grapes:["Malbec","Tannat","Négrette","Gros Manseng","Petit Manseng","Colombard"]},
+ {region:"Beaujolais",icon:"🍒",grapes:["Gamay","Chardonnay"]},
+ {region:"Jura",icon:"⛰️",grapes:["Savagnin","Chardonnay","Poulsard","Trousseau","Pinot noir"]}
+];
+
+function regionGrapeGuideHtml(){
+ return `<details class="reference-guide">
+   <summary><span>🗺️ Aide : cépages par grandes régions</span><span>⌄</span></summary>
+   <div class="reference-guide-body">
+     <p class="small muted">Mémo indicatif : ce sont les cépages les plus courants, pas une règle absolue. Un vin peut être un assemblage ou sortir de ces exemples.</p>
+     <div class="reference-search-wrap"><input type="search" class="reference-search" placeholder="Rechercher Rhône, Syrah, Bourgogne…" oninput="filterRegionGrapeGuide(this)"></div>
+     <div class="reference-grid">
+       ${REGION_GRAPE_GUIDE.map(r=>`<div class="reference-card" data-guide-search="${esc([r.region,...r.grapes].join(" "))}">
+         <h4>${r.icon} ${esc(r.region)}</h4>
+         <div class=chips>${r.grapes.map(g=>`<span class="chip static">${esc(g)}</span>`).join("")}</div>
+       </div>`).join("")}
+     </div>
+     <div class="reference-empty" hidden>Aucune région ou cépage trouvé.</div>
+   </div>
+ </details>`;
+}
+
+function filterRegionGrapeGuide(input){
+ const q=normalizeChoiceSearch(input.value);
+ const root=input.closest(".reference-guide");
+ const cards=Array.from(root.querySelectorAll(".reference-card"));
+ let visible=0;
+ cards.forEach(card=>{
+   const hay=normalizeChoiceSearch(card.dataset.guideSearch||"");
+   const show=!q||hay.includes(q);
+   card.hidden=!show;
+   if(show)visible++;
+ });
+ const empty=root.querySelector(".reference-empty");
+ if(empty)empty.hidden=visible>0;
+}
+
 function blindGuessForm(w,a){
  return `${metric("👁️ Intensité visuelle","look",a)}${metric("👃 Intensité aromatique","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
- <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'))">${esc(x)}</button>`).join("")}</div></div>
- <div class=section><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswer('${w.id}','note',${n})">${n}</button>`).join("")}</div></div>
+ <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
+ <div class=section><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
  <div class=grid>
   <div><label>💰 Prix estimé (€)</label><input type=number min=.01 step=.5 value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="Ex. 15"></div>
   <div><label>🌍 Région / appellation</label>${regionPickerHtml(w.id,a.region||"","player")}</div>
@@ -1804,6 +1963,7 @@ function renderPlayerBlindTasting(w,a,ws){
  <div class=card>
    <div class=wine-head><div><span class=pill>VIN ${game.current+1} / ${ws.length}</span><h1>À toi de trouver</h1><p class=muted>Aucun indice. Fais confiance à tes sens et engage une réponse.</p></div><div class=emoji>${ICON[w.type]}</div></div>
    <div class=notice><b>🎯 Objectif :</b> identifier au mieux le prix, la région et les cépages. Maximum : 11 points.</div>
+   ${regionGrapeGuideHtml()}
    ${blindGuessForm(w,a)}
    <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🎯 Verrouiller ma réponse</button></div>
  </div>`;
@@ -1828,32 +1988,90 @@ async function renderPlayerChallengeTasting(w,a,ws){
      ${level>=1?`<p><b>Indice 1 :</b> ${esc(hints.hint1||"Observe les marqueurs dominants.")}</p>`:`<button class="btn secondary" onclick="revealHint('${w.id}',1)">Débloquer l’indice 1 → score ×0,75</button>`}
      ${level>=2?`<p><b>Indice 2 :</b> ${esc(hints.hint2||"Replace le vin dans son origine probable.")}</p>`:level>=1?`<button class="btn secondary" onclick="revealHint('${w.id}',2)">Débloquer l’indice 2 → score ×0,50</button>`:""}
    </div>
+   ${regionGrapeGuideHtml()}
    ${blindGuessForm(w,a)}
    <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🥂 Valider mon challenge</button></div>
  </div>`;
 }
 function metric(label,key,a){
- return `<div class=section><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n})">${n}</button>`).join("")}</div></div>`;
+ return `<div class=section><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n},this)">${n}</button>`).join("")}</div></div>`;
 }
-async function setScore(wineId,key,n){
+async function setScore(wineId,key,n,button=null){
+ if(button){
+   button.parentElement?.querySelectorAll("button").forEach(b=>b.classList.remove("sel"));
+   button.classList.add("sel");
+ }
  const a=await getAnswer(wineId),scores={...(a.scores||{}),[key]:n};
- await upsertAnswer(wineId,{scores});
+ const saved=await upsertAnswer(wineId,{scores});
+ if(!saved&&button){
+   button.classList.remove("sel");
+   renderPlayerTasting();
+ }
 }
-async function setAnswer(wineId,key,val){await upsertAnswer(wineId,{[key]:val})}
-async function toggleAroma(wineId,x){
+async function setAnswer(wineId,key,val){return await upsertAnswer(wineId,{[key]:val})}
+
+async function setAnswerChoice(wineId,key,val,button){
+ if(button){
+   button.parentElement?.querySelectorAll("button").forEach(b=>b.classList.remove("sel"));
+   button.classList.add("sel");
+ }
+ const saved=await setAnswer(wineId,key,val);
+ if(!saved&&button)renderPlayerTasting();
+}
+async function toggleAroma(wineId,x,button=null){
  const a=await getAnswer(wineId),ar=a.aromas||[];
- await upsertAnswer(wineId,{aromas:ar.includes(x)?ar.filter(v=>v!==x):[...ar,x]});
+ const next=ar.includes(x)?ar.filter(v=>v!==x):[...ar,x];
+ if(button)button.classList.toggle("sel",next.includes(x));
+ const saved=await upsertAnswer(wineId,{aromas:next});
+ if(!saved&&button)renderPlayerTasting();
 }
-async function setPlayerGrapes(wineId,values){await upsertAnswer(wineId,{grapes:values})}
+async function setPlayerGrapes(wineId,values){
+ return await upsertAnswer(wineId,{grapes:values});
+}
 async function upsertAnswer(wineId,patch){
- const a=await getAnswer(wineId);
- if(a.done)return toast("Réponse déjà validée.");
- const payload={...a,...patch};delete payload.id;delete payload.created_at;
- const key=`${game.id}:${wineId}:${user.id}`;
- answerCache.set(key,payload);
- const r=await supabaseClient.from("answers").upsert(payload,{onConflict:"game_id,wine_id,user_id"}).select().single();
- if(r.error){answerCache.set(key,a);return toast(r.error.message)}
- answerCache.set(key,r.data);return r.data;
+ const cacheKey=`${game.id}:${wineId}:${user.id}`;
+ const current=await getAnswer(wineId);
+ if(current.done){toast("Réponse déjà validée.");return null;}
+
+ const optimistic={...current,...patch};
+ delete optimistic.id;
+ delete optimistic.created_at;
+ answerCache.set(cacheKey,optimistic);
+
+ const previous=answerWriteQueues.get(cacheKey)||Promise.resolve();
+ const task=previous.catch(()=>{}).then(async()=>{
+   const latest=answerCache.get(cacheKey)||optimistic;
+   if(latest.done)return latest;
+
+   const payload={...latest};
+   delete payload.id;
+   delete payload.created_at;
+
+   const r=await supabaseClient.from("answers")
+     .upsert(payload,{onConflict:"game_id,wine_id,user_id"})
+     .select()
+     .single();
+
+   if(r.error){
+     const now=answerCache.get(cacheKey);
+     if(now===latest||JSON.stringify(now)===JSON.stringify(latest)){
+       answerCache.set(cacheKey,current);
+     }
+     toast(r.error.message);
+     return null;
+   }
+
+   const now=answerCache.get(cacheKey);
+   const newerPending=now&&JSON.stringify(now)!==JSON.stringify(latest);
+   if(!newerPending)answerCache.set(cacheKey,r.data);
+   return r.data;
+ });
+
+ answerWriteQueues.set(cacheKey,task);
+ try{return await task}
+ finally{
+   if(answerWriteQueues.get(cacheKey)===task)answerWriteQueues.delete(cacheKey);
+ }
 }
 async function submitAnswer(wineId){
  const a=await getAnswer(wineId,true);
