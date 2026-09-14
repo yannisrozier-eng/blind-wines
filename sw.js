@@ -1,4 +1,4 @@
-const CACHE="blind-wine-v348-unique-modes";
+const CACHE="blind-wine-v349-home-navigation";
 const SHELL=["./","./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

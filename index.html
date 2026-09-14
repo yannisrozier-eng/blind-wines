@@ -590,8 +590,27 @@ tr:last-child td{border-bottom:0}
 .discovery-summary{display:grid;gap:10px}
 .discovery-summary .row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border)}
 @media(max-width:700px){.discovery-nav{flex-direction:column-reverse}}
+
+.global-home-btn{
+ position:fixed;right:16px;bottom:18px;z-index:9999;
+ display:none;align-items:center;gap:7px;
+ border:1px solid rgba(255,255,255,.16);
+ background:rgba(18,18,18,.92);color:#fff;
+ padding:11px 14px;border-radius:999px;
+ box-shadow:0 8px 28px rgba(0,0,0,.28);
+ font:inherit;font-weight:700;cursor:pointer;
+ backdrop-filter:blur(12px);
+}
+.global-home-btn.show{display:flex}
+@media(max-width:560px){
+ .global-home-btn{right:12px;bottom:12px;padding:10px 12px}
+ .global-home-btn span{display:none}
+}
+.active-game-card{border:1px solid rgba(212,175,55,.45)}
+
 </style></head>
 <body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
+<button id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
 <script>
 
 const CONFIG={url:SUPABASE_URL,key:SUPABASE_PUBLISHABLE_KEY};
@@ -1054,14 +1073,47 @@ function selectExperience(m){
  }
 }
 
+
+function updateGlobalHomeButton(){
+ const b=document.getElementById("globalHomeBtn");
+ if(!b)return;
+ const onHome=document.body.dataset.screen==="home";
+ b.classList.toggle("show",Boolean(game)&&!onHome);
+}
+
+function goHomeFromGame(){
+ document.body.dataset.screen="home";
+ home();
+}
+
+function resumeCurrentGame(){
+ if(!game)return home();
+ document.body.dataset.screen="game";
+ route();
+}
+
 function home(){
  wineCache=null;answerCache.clear();
+ document.body.dataset.screen="home";
  const preset=new URLSearchParams(location.search).get("game")||"";
  const pname=profile?.display_name||"Joueur";
+ const activeGame=game?`<div class="card active-game-card" style="max-width:820px;margin:0 auto 22px">
+   <div class=wine-head>
+     <div>
+       <span class=pill>PARTIE EN COURS</span>
+       <h2 style="margin:8px 0 4px">${modeBadge()}</h2>
+       <p class=muted>${role==="host"?"Tu organises":"Tu participes à"} la partie <b>${esc(game.code||"")}</b>${game.status==="finished"?" · terminée":game.status==="lobby"?" · en attente":" · dégustation en cours"}.</p>
+     </div>
+     <div class=emoji>${game.experience_mode==="discovery"?"🎓":game.experience_mode==="challenge"?"🥂":"🎯"}</div>
+   </div>
+   <button class=btn style="width:100%;margin-top:10px" onclick="resumeCurrentGame()">↩ Reprendre la partie en cours</button>
+ </div>`:"";
+
  document.getElementById("app").innerHTML=`<header>
  <div class="logo">🍷 <span>BLIND WINE</span></div>
  <div class=account-bar><button class="btn secondary" onclick="renderProfile()">👤 ${esc(pname)}</button><button class="btn secondary" onclick="logout()">Déconnexion</button></div>
  </header>
+ ${activeGame}
  <div class="card hero"><div class="emoji">🍷</div><h1>Blind Wine</h1><p class="muted">Joue, découvre et apprends le vin ensemble.</p>
  <div class="grid" style="max-width:820px;margin:30px auto 0">
   <div class="card">
@@ -1076,9 +1128,11 @@ function home(){
  </div>
  <button class="btn secondary" style="margin-top:18px" onclick="renderProfile()">📚 Mon historique & mes statistiques</button>
  <div class=install-hint>📱 Sur iPhone : Safari → Partager → Ajouter à l’écran d’accueil.</div></div>`;
+ updateGlobalHomeButton();
 }
 
 function renderCreateExperience(){
+ document.body.dataset.screen="home";updateGlobalHomeButton();
  document.getElementById("app").innerHTML=`<header>
    <div class=logo>🍷 <span>BLIND WINE</span></div>
    <button class="btn secondary" onclick="home()">← Retour</button>
@@ -1197,6 +1251,8 @@ function requestRoute(){
  queueMicrotask(()=>{routePending=false;route()});
 }
 function route(){
+ document.body.dataset.screen="game";
+ updateGlobalHomeButton();
  routeSeq++;
  if(!game)return home();
  if(role==="host"){

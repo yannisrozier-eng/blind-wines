@@ -60,3 +60,10 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - 0 indice = x1 ; 1 indice = x0,75 ; 2 indices = x0,50.
 - Révélation dédiée Brut → Indices → Multiplicateur → Final.
 - Classement final dédié à la prise de risque, avec badges Champion du risque / Sans filet / Stratège.
+
+## V3.4.9 — Navigation Accueil / reprise de partie
+- Ajoute un bouton Accueil flottant pendant une partie.
+- Revenir à l'accueil ne supprime ni la session ni la partie.
+- L'accueil affiche une carte "Partie en cours" avec bouton de reprise.
+- Fonctionne pour organisateur et joueur, dans les 3 modes.
+- La restauration automatique de session reste active après rechargement du navigateur.
