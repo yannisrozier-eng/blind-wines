@@ -1257,3 +1257,15 @@ textarea:focus-visible{
  outline:3px solid rgba(111,36,61,.28);
  outline-offset:2px;
 }
+
+/* V3.6.2 — audit UX post-refactor */
+@media(max-width:700px){
+  table{
+    display:block;
+    max-width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    white-space:nowrap;
+  }
+  table th,table td{white-space:nowrap}
+}

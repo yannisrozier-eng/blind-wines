@@ -161,7 +161,7 @@ const REGION_GRAPES={
 };
 
 const EXPERIENCE={
- blind:{icon:"🎯",name:"À l’aveugle",desc:"Pur jeu de déduction : zéro indice, 11 points à aller chercher sur prix, région et cépages."},
+ blind:{icon:"🎯",name:"À l’aveugle",desc:"Pur jeu de déduction : aucun indice spécifique au vin, 11 points à aller chercher sur prix, région et cépages."},
  discovery:{icon:"🎓",name:"Découverte",desc:"Parcours pédagogique : identité connue, Œil → Nez → Bouche → mini-quiz, sans classement compétitif."},
  challenge:{icon:"🥂",name:"Challenge",desc:"Jeu de prise de risque : demande des indices si nécessaire, mais sacrifie une partie de ton score."}
 };

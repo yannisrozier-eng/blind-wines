@@ -17,13 +17,3 @@ if("serviceWorker" in navigator){
 }
 
 boot();
-
-window.addEventListener("online",updateNetworkBanner);
-window.addEventListener("offline",updateNetworkBanner);
-setTimeout(updateNetworkBanner,0);
-
-if("serviceWorker" in navigator){
- window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-}
-
-boot();

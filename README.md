@@ -208,3 +208,12 @@ Le gros `index.html` a été séparé sans changement de schéma Supabase.
 - `js/main.js` — bootstrap, réseau, service worker
 
 Les scripts restent des scripts classiques chargés explicitement, afin de conserver les handlers HTML globaux et de minimiser le risque de régression pendant cette étape de refactor.
+
+
+## V3.6.2 — Audit post-refactor
+- Corrige un double bootstrap dans `js/main.js`.
+- Revalide dépendances, handlers, RPC, RLS, assets, PWA et scoring.
+- Ajoute scroll horizontal des tableaux sur mobile.
+- Renforce l'accessibilité de la bannière réseau.
+- Rend les métadonnées Open Graph plus fiables avec URL absolue.
+- Aucun changement SQL.
