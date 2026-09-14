@@ -280,6 +280,7 @@ begin
   if g.status='finished' then raise exception 'Cette partie est terminée.'; end if;
 
   -- Un membre existant peut se reconnecter. Un nouveau joueur ne peut entrer qu'au lobby.
+  -- IMPORTANT : join_game retourne une colonne nommée game_id ; éviter les références SQL non qualifiées à game_id.
   if g.status<>'lobby' and not exists(
     select 1 from public.players p where p.game_id=g.id and p.user_id=auth.uid()
   ) then
@@ -292,7 +293,8 @@ begin
 
   insert into public.players(game_id,user_id,name)
   values(g.id,auth.uid(),left(clean_name,30))
-  on conflict (game_id,user_id) do update set name=excluded.name;
+  on conflict on constraint players_game_id_user_id_key
+  do update set name=excluded.name;
 
   return query select g.id,g.code,g.status,g.current,g.phase,g.wine_count,g.host_id,g.experience_mode;
 end;

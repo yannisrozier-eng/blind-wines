@@ -126,3 +126,9 @@ Validation statique approfondie effectuée. Pas de vrai test E2E contre ton proj
 - Recherche déclenchée à chaque frappe via `input`, avec fallback `addEventListener`.
 - Recherche insensible à la casse et aux accents : `rhone`, `Rhône` et `RHÔNE` correspondent.
 - Normalisation supplémentaire des apostrophes, tirets et ponctuation pour améliorer les recherches.
+
+## V3.5.4 — Correctif `join_game`
+- Corrige l'erreur PostgreSQL `column reference "game_id" is ambiguous` lors de l'arrivée d'un joueur.
+- Cause : `game_id` est à la fois une colonne de sortie de `RETURNS TABLE` et une colonne de `players`.
+- `ON CONFLICT (game_id,user_id)` est remplacé par `ON CONFLICT ON CONSTRAINT players_game_id_user_id_key`.
+- Aucun changement d'API frontend.
