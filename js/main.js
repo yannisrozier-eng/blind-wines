@@ -1,3 +1,5 @@
+window.BLIND_WINE_BUILD="3.6.5";
+console.info("Blind Wine build",window.BLIND_WINE_BUILD);
 /* Blind Wine — Application bootstrap, DOM observers, connectivity and PWA registration. */
 'use strict';
 

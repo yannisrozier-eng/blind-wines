@@ -232,3 +232,10 @@ Les scripts restent des scripts classiques chargés explicitement, afin de conse
 - Tous les textes restent modifiables par le caviste.
 - Le joueur voit un focus pédagogique au moment pertinent du parcours.
 - Aucun changement SQL.
+
+
+## V3.6.5 — Correctif de déploiement/cache
+- Conserve tous les changements Découverte de la V3.6.4.
+- Le Service Worker charge maintenant JS/CSS en network-first afin qu'un nouveau déploiement soit visible immédiatement après actualisation.
+- Fichiers Découverte réellement modifiés par la V3.6.4 : `js/host.js`, `js/discovery.js`, `styles.css`, `sw.js`.
+- Build marker : 3.6.5.
