@@ -1,6 +1,111 @@
 /* Blind Wine — Host lobby, bottle configuration, game control, results and stats. */
 'use strict';
 
+function quizCorrectOptionsHtml(options,correct){
+ const list=Array.isArray(options)?options.slice(0,4):[];
+ return `<option value="">Choisir la bonne réponse…</option>`+list.map((opt,i)=>`<option value="${i}" ${Number.isInteger(correct)&&correct===i?"selected":""}>${String.fromCharCode(65+i)}. ${esc(opt)}</option>`).join("");
+}
+
+function refreshQuizCorrectSelect(wineId,options,preferredIndex=null){
+ const select=document.querySelector(`[data-quiz-correct="${wineId}"]`);
+ if(!select)return;
+ const valid=Number.isInteger(preferredIndex)&&preferredIndex>=0&&preferredIndex<options.length?preferredIndex:null;
+ select.innerHTML=quizCorrectOptionsHtml(options,valid);
+ select.value=valid==null?"":String(valid);
+ select.disabled=options.length<2;
+ const hint=document.querySelector(`[data-quiz-correct-hint="${wineId}"]`);
+ if(hint)hint.textContent=options.length<2?"Ajoute au moins 2 réponses pour pouvoir choisir la bonne.":"Choisis directement la bonne réponse parmi les propositions ci-dessus.";
+}
+
+
+function discoveryHasPedagogicalContent(w){
+ return [w.learning_note,w.eye_tip,w.nose_tip,w.palate_tip,w.quiz_question,w.quiz_explanation]
+  .some(v=>String(v||'').trim()) || (Array.isArray(w.quiz_options)&&w.quiz_options.length>0);
+}
+
+function discoveryConfigHtml(w){
+ const preset=discoveryGoalPreset(w.learning_goal);
+ const options=Array.isArray(w.quiz_options)?w.quiz_options:[];
+ const hasPreset=!!preset;
+ return `<div class="discovery-config" style="grid-column:1/-1">
+   <div class="discovery-config-intro">
+     <span class=pill>🎓 PARCOURS PÉDAGOGIQUE</span>
+     <h3>1. Que veux-tu faire découvrir avec ce vin ?</h3>
+     <p class=muted>Choisis l’idée principale à transmettre. Blind Wine prépare ensuite un parcours Œil → Nez → Bouche → Comprendre que tu peux modifier librement.</p>
+     <div class="discovery-goal-row">
+       <select data-discovery-goal="${w.id}" onchange="selectDiscoveryGoal('${w.id}',this.value,${discoveryHasPedagogicalContent(w)?'true':'false'},this)">${discoveryGoalOptionsHtml(w.learning_goal)}</select>
+       ${hasPreset?`<button type="button" class="btn secondary discovery-reapply" onclick="reapplyDiscoveryGoal('${w.id}','${preset.id}')">↻ Réappliquer</button>`:''}
+     </div>
+     ${preset?`<div class="discovery-goal-preview"><div class="discovery-goal-icon">${preset.icon}</div><div><b>${esc(preset.label)}</b><p>${esc(preset.short)}</p></div></div>`:`<div class="discovery-goal-preview custom"><div class="discovery-goal-icon">✍️</div><div><b>${w.learning_goal?'Objectif personnalisé':'Choisis un objectif'}</b><p>${w.learning_goal?esc(w.learning_goal):'Le parcours proposé apparaîtra ici.'}</p></div></div>`}
+     <label>Objectif affiché aux participants</label>
+     <input data-discovery-custom-goal="${w.id}" value="${esc(w.learning_goal||'')}" onchange="updateWineSecret('${w.id}','learning_goal',this.value)" placeholder="Ex. Ressentir l’acidité et comprendre son rôle dans l’équilibre du vin">
+   </div>
+
+   <details class="discovery-config-details" ${hasPreset?'':'open'}>
+     <summary><span>2. Personnaliser le parcours proposé</span><span>Œil · Nez · Bouche · Quiz</span></summary>
+     <div class="discovery-config-body config-simple">
+       <div style="grid-column:1/-1"><label>💡 Message à retenir</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Le message principal que les participants doivent retenir.">${esc(w.learning_note||preset?.learning_note||'')}</textarea></div>
+       <div style="grid-column:1/-1"><label>👁️ Repère visuel</label><textarea onchange="updateWineSecret('${w.id}','eye_tip',this.value)" placeholder="Ce que le participant doit observer dans la robe.">${esc(w.eye_tip||preset?.eye_tip||'')}</textarea></div>
+       <div style="grid-column:1/-1"><label>👃 Repère aromatique</label><textarea onchange="updateWineSecret('${w.id}','nose_tip',this.value)" placeholder="Ce que le participant doit chercher au nez.">${esc(w.nose_tip||preset?.nose_tip||'')}</textarea></div>
+       <div style="grid-column:1/-1"><label>👄 Repère en bouche</label><textarea onchange="updateWineSecret('${w.id}','palate_tip',this.value)" placeholder="La sensation principale à observer en bouche.">${esc(w.palate_tip||preset?.palate_tip||'')}</textarea></div>
+       <div style="grid-column:1/-1" class="discovery-quiz-config">
+         <h3>🧠 Vérifier que le message est compris</h3>
+         <p class=muted>Le mini-quiz sert à fixer une seule idée clé, pas à piéger les participants.</p>
+       </div>
+       <div style="grid-column:1/-1"><label>Question du mini-quiz</label><input value="${esc(w.quiz_question||preset?.question||'')}" onchange="updateWineSecret('${w.id}','quiz_question',this.value)" placeholder="Ex. Quel signe permet le mieux de ressentir l’acidité ?"></div>
+       <div style="grid-column:1/-1"><label>Réponses du quiz (une par ligne, 2 à 4)</label><textarea data-quiz-options="${w.id}" oninput="previewQuizOptions('${w.id}',this.value)" onchange="updateQuizOptions('${w.id}',this.value)" placeholder="Une salivation plus importante&#10;Une sensation de bouche sèche&#10;Une couleur plus foncée">${esc((options.length?options:(preset?.options||[])).join('\n'))}</textarea><p class="small muted" style="margin:6px 0 0">Écris 2 à 4 propositions, une par ligne.</p></div>
+       <div style="grid-column:1/-1"><label>✅ Quelle est la bonne réponse ?</label><select data-quiz-correct="${w.id}" ${(options.length?options:(preset?.options||[])).length<2?'disabled':''} onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))">${quizCorrectOptionsHtml(options.length?options:(preset?.options||[]),Number.isInteger(w.quiz_correct)?w.quiz_correct:preset?.correct)}</select><p class="small muted" data-quiz-correct-hint="${w.id}" style="margin:6px 0 0">Choisis directement la bonne réponse parmi les propositions ci-dessus.</p></div>
+       <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Explique simplement pourquoi cette réponse est correcte.">${esc(w.quiz_explanation||preset?.explanation||'')}</textarea></div>
+     </div>
+   </details>
+ </div>`;
+}
+
+async function applyDiscoveryGoalPreset(wineId,goalId,{confirmReplace=true}={}){
+ const preset=DISCOVERY_GOALS.find(g=>g.id===goalId);
+ if(!preset)return null;
+ if(confirmReplace&&!confirm(`Utiliser le parcours « ${preset.label} » ?\n\nLes conseils et le mini-quiz pédagogiques actuels de ce vin seront remplacés. Les informations du vin (nom, prix, région, cépages) ne seront pas modifiées.`))return false;
+ const patch={
+   learning_goal:preset.label,
+   learning_note:preset.learning_note,
+   eye_tip:preset.eye_tip,
+   nose_tip:preset.nose_tip,
+   palate_tip:preset.palate_tip,
+   quiz_question:preset.question,
+   quiz_options:preset.options,
+   quiz_correct:preset.correct,
+   quiz_explanation:preset.explanation
+ };
+ const r=await supabaseClient.from('wine_secrets').update(patch).eq('wine_id',wineId);
+ if(r.error){toast(r.error.message);return null}
+ wineCache=null;
+ return true;
+}
+
+async function selectDiscoveryGoal(wineId,goalId,hasContent,select){
+ if(goalId==='custom'){
+   document.querySelector(`[data-discovery-custom-goal="${wineId}"]`)?.focus();
+   return;
+ }
+ if(!goalId){
+   await updateWineSecret(wineId,'learning_goal','');
+   return;
+ }
+ const saved=await applyDiscoveryGoalPreset(wineId,goalId,{confirmReplace:hasContent});
+ if(saved===false){
+   const ws=await getHostWines();
+   const w=ws.find(x=>x.id===wineId);
+   if(select)select.value=discoveryGoalId(w?.learning_goal)|| (w?.learning_goal?'custom':'');
+   return;
+ }
+ if(saved)await renderHostLobby();
+}
+
+async function reapplyDiscoveryGoal(wineId,goalId){
+ const saved=await applyDiscoveryGoalPreset(wineId,goalId,{confirmReplace:true});
+ if(saved)await renderHostLobby();
+}
+
 async function renderHostLobby(){
  const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>ORGANISATEUR</span></header>
@@ -16,17 +121,7 @@ async function renderHostLobby(){
   <div><label>Prix réel (€)</label><input type=number min=.01 step=.01 value="${w.price??""}" onchange="updateWineSecret('${w.id}','price',this.value===''?null:Number(this.value))"></div>
   <div><label>Région / appellation</label>${regionPickerHtml(w.id,w.region||"","host")}</div>
   <div style="grid-column:1/-1"><label>Cépage(s) / assemblage</label>${grapePickerHtml(w.id,w.grapes||w.grape,"host")}</div>
-  ${game.experience_mode==="discovery"?`<div style="grid-column:1/-1"><label>🎓 Objectif pédagogique</label><input value="${esc(w.learning_goal||"")}" onchange="updateWineSecret('${w.id}','learning_goal',this.value)" placeholder="Ex. Reconnaître l’acidité et les agrumes d’un Sauvignon"></div>
-  <div style="grid-column:1/-1"><label>💡 À retenir</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Le message principal que les participants doivent retenir.">${esc(w.learning_note||"")}</textarea></div>`:""}
-  ${game.experience_mode==="discovery"?`
-  <div style="grid-column:1/-1"><h3 style="margin-bottom:0">Parcours Découverte</h3><p class=muted>Ces contenus apparaissent au bon moment : Œil → Nez → Bouche → Comprendre.</p></div>
-  <div style="grid-column:1/-1"><label>👁️ Repère visuel</label><textarea onchange="updateWineSecret('${w.id}','eye_tip',this.value)" placeholder="Ex. Une robe pâle peut évoquer un vin jeune ou un cépage peu colorant.">${esc(w.eye_tip||"")}</textarea></div>
-  <div style="grid-column:1/-1"><label>👃 Repère aromatique</label><textarea onchange="updateWineSecret('${w.id}','nose_tip',this.value)" placeholder="Ex. Cherche les agrumes, les fleurs blanches et une éventuelle note végétale.">${esc(w.nose_tip||"")}</textarea></div>
-  <div style="grid-column:1/-1"><label>👄 Repère en bouche</label><textarea onchange="updateWineSecret('${w.id}','palate_tip',this.value)" placeholder="Ex. Observe l’acidité, la texture et la longueur plutôt que de chercher tout de suite à identifier le vin.">${esc(w.palate_tip||"")}</textarea></div>
-  <div style="grid-column:1/-1"><label>🧠 Question du mini-quiz</label><input value="${esc(w.quiz_question||"")}" onchange="updateWineSecret('${w.id}','quiz_question',this.value)" placeholder="Ex. Quel élément explique le mieux la sensation de fraîcheur ?"></div>
-  <div style="grid-column:1/-1"><label>Réponses du quiz (une par ligne, 2 à 4)</label><textarea onchange="updateQuizOptions('${w.id}',this.value)" placeholder="L’acidité&#10;Le sucre&#10;Les tanins">${esc((Array.isArray(w.quiz_options)?w.quiz_options:[]).join("\n"))}</textarea></div>
-  <div><label>Bonne réponse</label><select onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))"><option value="">Choisir…</option>${[0,1,2,3].map(i=>`<option value="${i}" ${Number.isInteger(w.quiz_correct)&&w.quiz_correct===i?"selected":""}>Réponse ${i+1}</option>`).join("")}</select></div>
-  <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Ex. L’acidité provoque la salivation et donne cette impression de fraîcheur.">${esc(w.quiz_explanation||"")}</textarea></div>`:""}
+  ${game.experience_mode==="discovery"?discoveryConfigHtml(w):""}
   ${game.experience_mode==="challenge"?`<div style="grid-column:1/-1"><label>💡 Explication après révélation</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Ce que les joueurs doivent retenir une fois le vin révélé.">${esc(w.learning_note||"")}</textarea></div><div><label>Indice 1 · léger</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)" placeholder="Ex. Cherche le poivre et les fruits noirs"></div><div><label>Indice 2 · précis</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)" placeholder="Ex. Rhône Nord"></div>`:""}
  </div></div>`).join("")}</div>
  <div class="card sticky"><button type="button" class=btn style="width:100%" onclick="startGame()">🚀 Lancer la dégustation</button></div>`;
@@ -54,9 +149,31 @@ async function updateWineSecret(wineId,key,val){
  return true;
 }
 
+function parseQuizOptions(text){
+ return String(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,4);
+}
+
+function previewQuizOptions(wineId,text){
+ const options=parseQuizOptions(text);
+ const select=document.querySelector(`[data-quiz-correct="${wineId}"]`);
+ const previous=select?.value!==""?Number(select.value):null;
+ refreshQuizCorrectSelect(wineId,options,previous);
+}
+
 async function updateQuizOptions(wineId,text){
- const options=String(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,4);
- await updateWineSecret(wineId,"quiz_options",options);
+ const options=parseQuizOptions(text);
+ const select=document.querySelector(`[data-quiz-correct="${wineId}"]`);
+ const selected=select?.value!==""?Number(select.value):null;
+ const validSelected=Number.isInteger(selected)&&selected>=0&&selected<options.length?selected:null;
+
+ const saved=await updateWineSecret(wineId,"quiz_options",options);
+ if(!saved)return;
+
+ // Si la bonne réponse n'existe plus après édition, on la remet volontairement à vide.
+ if(validSelected==null){
+   await updateWineSecret(wineId,"quiz_correct",null);
+ }
+ refreshQuizCorrectSelect(wineId,options,validSelected);
 }
 
 async function updateWineGrapes(wineId,values){
@@ -70,6 +187,8 @@ async function startGame(){
  const missing=ws.filter(w=>!w.name||!w.price||!w.region||!(w.grapes||[]).length);
  if(missing.length)return toast(`Complète les informations des vins : ${missing.map(w=>"#"+(w.position+1)).join(", ")}.`);
  if(game.experience_mode==="discovery"){
+   const missingGoal=ws.filter(w=>!String(w.learning_goal||"").trim());
+   if(missingGoal.length)return toast(`Choisis l’objectif pédagogique des vins : ${missingGoal.map(w=>"#"+(w.position+1)).join(", ")}.`);
    const badQuiz=ws.filter(w=>{
      const q=String(w.quiz_question||"").trim();
      if(!q)return false;
@@ -97,6 +216,7 @@ async function renderHostTasting(){
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 DÉCOUVERTE</span></header>
    <div class="card hero"><div class=emoji>🎓</div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span><h1>${esc(d?.name||"Parcours guidé")}</h1>
    <p class=muted>${d?`${esc(regionLabel(d.region))} · ${esc((d.grapes||[]).join(" / "))}`:"Dégustation pédagogique en cours"}</p>
+   ${d?.learning_goal?`<div class="discovery-host-goal"><b>🎯 Objectif :</b> ${esc(discoveryGoalPreset(d.learning_goal)?.label||d.learning_goal)}</div>`:""}
    <p><b>${answered}</b> / ${total} participants ont terminé le parcours.</p>
    <div class=notice>Découverte = observer → sentir → goûter → comprendre. Aucun classement de connaissance.</div>
    <button type="button" class="btn gold" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;

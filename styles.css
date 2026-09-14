@@ -1269,3 +1269,101 @@ textarea:focus-visible{
   }
   table th,table td{white-space:nowrap}
 }
+
+/* V3.6.3 — configuration mini-quiz Découverte */
+select[data-quiz-correct]:disabled{
+ background:var(--surface-soft);
+ color:var(--muted);
+ cursor:not-allowed;
+ opacity:.75;
+}
+
+/* V3.6.4 — Discovery learning goals */
+.discovery-config{
+  margin-top:14px;
+  border:1px solid #e5d8de;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fff,#fcf8fa);
+  overflow:hidden;
+}
+.discovery-config-intro{padding:18px}
+.discovery-config-intro h3{margin:12px 0 6px}
+.discovery-goal-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:end;
+  margin-top:12px;
+}
+.discovery-reapply{white-space:nowrap;min-height:46px}
+.discovery-goal-preview{
+  display:flex;
+  align-items:flex-start;
+  gap:13px;
+  padding:14px;
+  margin:12px 0 4px;
+  border-radius:14px;
+  background:var(--wine-soft);
+  color:var(--wine-dark);
+  border:1px solid #e4cad5;
+}
+.discovery-goal-preview.custom{background:var(--surface-soft);color:var(--ink);border-color:var(--line)}
+.discovery-goal-preview p{margin:3px 0 0;font-size:13px;line-height:1.45;color:inherit;opacity:.82}
+.discovery-goal-icon{font-size:28px;line-height:1;flex:0 0 auto}
+.discovery-config-details{border-top:1px solid #e9dfe4;background:#fff}
+.discovery-config-details>summary{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  list-style:none;
+  cursor:pointer;
+  padding:15px 18px;
+  font-weight:850;
+  color:var(--wine-dark);
+}
+.discovery-config-details>summary::-webkit-details-marker{display:none}
+.discovery-config-details>summary span:last-child{font-size:12px;color:var(--muted);font-weight:700}
+.discovery-config-details[open]>summary{border-bottom:1px solid var(--line)}
+.discovery-config-body{padding:4px 18px 18px}
+.discovery-quiz-config{
+  margin-top:8px;
+  padding-top:12px;
+  border-top:1px dashed var(--line);
+}
+.discovery-quiz-config h3{margin:0 0 4px}
+.discovery-goal-player small{
+  display:block;
+  margin-top:5px;
+  line-height:1.4;
+  opacity:.78;
+}
+@media(max-width:700px){
+  .discovery-config-intro{padding:15px}
+  .discovery-goal-row{grid-template-columns:1fr}
+  .discovery-reapply{width:100%}
+  .discovery-config-details>summary{align-items:flex-start;flex-direction:column;gap:4px;padding:14px 15px}
+  .discovery-config-body{padding:4px 15px 15px}
+}
+.discovery-focus{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:13px 14px;
+  margin:12px 0 14px;
+  border-left:4px solid var(--wine);
+  border-radius:0 13px 13px 0;
+  background:var(--wine-soft);
+  color:var(--wine-dark);
+}
+.discovery-focus span{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.discovery-focus b{font-size:15px}
+.discovery-focus small{line-height:1.4;opacity:.8}
+.discovery-host-goal{
+  width:min(620px,100%);
+  margin:14px auto;
+  padding:11px 14px;
+  border-radius:13px;
+  background:var(--wine-soft);
+  color:var(--wine-dark);
+}

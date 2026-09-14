@@ -217,3 +217,18 @@ Les scripts restent des scripts classiques chargés explicitement, afin de conse
 - Renforce l'accessibilité de la bannière réseau.
 - Rend les métadonnées Open Graph plus fiables avec URL absolue.
 - Aucun changement SQL.
+
+
+## V3.6.3 — Configuration mini-quiz Découverte
+- Remplace le choix abstrait « Réponse 1 / 2 / 3 / 4 » par le texte réel des réponses.
+- La liste « Quelle est la bonne réponse ? » se met à jour pendant la saisie.
+- Le choix est désactivé tant qu'il n'y a pas au moins 2 propositions.
+- Si une réponse supprimée était la bonne, `quiz_correct` est remis à vide pour éviter une configuration incohérente.
+
+## V3.6.4 — Parcours pédagogiques Découverte
+- Chaque bouteille Découverte doit maintenant avoir un objectif pédagogique clair.
+- 12 objectifs prêts à l’emploi : couleur/évolution, arômes, acidité, tanins, sucre, corps, longueur, cépage, région, terroir, élevage en fût, âge.
+- Le choix d’un objectif préremplit le parcours pédagogique et le mini-quiz, sans modifier l’identité du vin.
+- Tous les textes restent modifiables par le caviste.
+- Le joueur voit un focus pédagogique au moment pertinent du parcours.
+- Aucun changement SQL.
