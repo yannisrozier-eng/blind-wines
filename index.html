@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Blind Wine</title>
 <meta name="theme-color" content="#6f243d">
-<meta name="description" content="Dégustation de vins à l'aveugle entre amis.">
+<meta name="description" content="Soirées de dégustation de vin interactives : à l’aveugle, découverte pédagogique et challenge.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Blind Wine">
@@ -608,12 +608,84 @@ tr:last-child td{border-bottom:0}
 }
 .active-game-card{border:1px solid rgba(212,175,55,.45)}
 
+
+.choice-search-wrap{
+ display:flex;align-items:center;gap:8px;
+ position:sticky;top:0;z-index:2;
+ padding:10px;background:var(--card,#171717);
+ border-bottom:1px solid rgba(255,255,255,.08);
+}
+.choice-search{
+ width:100%;margin:0!important;
+ min-height:44px;
+}
+.choice-search-clear{
+ width:40px;height:40px;flex:0 0 40px;
+ border:0;border-radius:10px;
+ background:rgba(255,255,255,.08);color:inherit;
+ font-size:22px;cursor:pointer;
+}
+.searchable-picker{
+ position:relative;
+}
+.searchable-picker>summary{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ min-height:46px;padding:11px 13px;
+ border:1px solid rgba(255,255,255,.12);
+ border-radius:12px;cursor:pointer;
+ background:rgba(255,255,255,.035);
+ list-style:none;
+}
+.searchable-picker>summary::-webkit-details-marker{display:none}
+.searchable-picker[open]>summary{
+ border-bottom-left-radius:0;border-bottom-right-radius:0;
+}
+.choice-picker-body{
+ max-height:330px;overflow:auto;
+ border:1px solid rgba(255,255,255,.12);
+ border-top:0;border-radius:0 0 12px 12px;
+ background:var(--card,#171717);
+}
+.choice-list{display:flex;flex-direction:column}
+.choice-option{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ width:100%;padding:11px 12px;
+ border:0;border-bottom:1px solid rgba(255,255,255,.06);
+ background:transparent;color:inherit;text-align:left;cursor:pointer;
+}
+.choice-option span:first-child{display:flex;flex-direction:column;gap:2px}
+.choice-option small{opacity:.62;font-size:.78rem}
+.choice-option.selected{background:rgba(212,175,55,.12)}
+.choice-option:hover{background:rgba(255,255,255,.055)}
+.choice-clear{opacity:.78}
+.choice-empty{padding:18px;text-align:center;opacity:.65}
+.grape-choice-list{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:0;
+}
+.grape-option{
+ display:flex;align-items:center;gap:9px;
+ padding:11px 12px;margin:0;
+ border-bottom:1px solid rgba(255,255,255,.06);
+ cursor:pointer;
+}
+.grape-option.selected{background:rgba(212,175,55,.12)}
+.grape-option input{width:auto;margin:0}
+@media(max-width:560px){
+ .choice-picker-body{max-height:52vh}
+ .grape-choice-list{grid-template-columns:1fr}
+ .choice-search-wrap{padding:8px}
+}
+
 </style></head>
 <body><div id="netBanner" class="net-banner">Connexion perdue — les réponses ne peuvent pas être synchronisées.</div><div id="app" class="app"></div>
 <button id="globalHomeBtn" class="global-home-btn" onclick="goHomeFromGame()" aria-label="Retour à l'accueil" title="Accueil">⌂ <span>Accueil</span></button>
 <script>
 
-const CONFIG={url:SUPABASE_URL,key:SUPABASE_PUBLISHABLE_KEY};
+const CONFIG={
+ url:typeof SUPABASE_URL!=="undefined"?SUPABASE_URL:"",
+ key:typeof SUPABASE_PUBLISHABLE_KEY!=="undefined"?SUPABASE_PUBLISHABLE_KEY:""
+};
 const SESSION_KEY="blindwine_v27_session";
 let supabaseClient=null,user=null,profile=null,game=null,role=null,player=null,channel=null;
 let wineCache=null;
@@ -764,11 +836,6 @@ function esc(v){
   return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
 function toast(msg){ alert(String(msg||"Une erreur est survenue.")); }
-function makeCode(){
-  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out=""; crypto.getRandomValues(new Uint32Array(5)).forEach(n=>out+=chars[n%chars.length]);
-  return out;
-}
 function saveSession(){
   if(!game||!role)return;
   localStorage.setItem(SESSION_KEY,JSON.stringify({gameId:game.id,role}));
@@ -776,7 +843,7 @@ function saveSession(){
 function clearSession(){
   localStorage.removeItem(SESSION_KEY);
   game=role=player=null;
-  if(channel&&supabase){supabaseClient.removeChannel(channel);channel=null;}
+  if(channel&&supabaseClient){supabaseClient.removeChannel(channel);channel=null;}
 }
 function regionObj(id){return REGION_CATALOG.find(r=>r.id===id)}
 function regionAncestors(id){
@@ -795,9 +862,9 @@ function regionScore(guess,real){
  }
  const shared=ga.find(x=>ra.includes(x));
  if(shared){
-   const lvl=regionObj(shared)?.level;
-   if(lvl==="country"||lvl==="macro")return 1;
-   return 2;
+   // Deux appellations/régions sœurs ne sont pas une relation parent/enfant :
+   // elles gardent seulement le point de proximité géographique.
+   return 1;
  }
  return 0;
 }
@@ -827,9 +894,9 @@ function parseGrapes(v){
 function canonicalGrape(g){
  const x=String(g||"").trim().toLowerCase();
  const aliases={
-   "syrah / shiraz":"syrah","syrah":"syrah",
-   "monastrell / mourvèdre":"mourvedre","mourvèdre":"mourvedre",
-   "rolle / vermentino":"vermentino"
+   "syrah / shiraz":"syrah","syrah":"syrah","shiraz":"syrah",
+   "monastrell / mourvèdre":"mourvedre","mourvèdre":"mourvedre","monastrell":"mourvedre",
+   "rolle / vermentino":"vermentino","rolle":"vermentino","vermentino":"vermentino"
  };
  return aliases[x]||x.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 }
@@ -880,27 +947,101 @@ function typeOptions(selected=""){
  return [["rose","Rosé 🌸"],["white","Blanc 🥂"],["red","Rouge 🍷"]]
   .map(([v,l])=>`<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
 }
-function groupedRegionOptions(selected=""){
- const countries=[
-  ["France","france"],["Italie","italy"],["Espagne","spain"],["Portugal","portugal"],
-  ["Allemagne","germany"],["Autriche","austria"],["États-Unis","usa"],["Argentine","argentina"],
-  ["Chili","chile"],["Australie","australia"],["Nouvelle-Zélande","new_zealand"],["Afrique du Sud","south_africa"]
- ];
- return `<option value="">Choisir une région / appellation…</option>`+
- countries.map(([label,cid])=>{
-   const ids=REGION_CATALOG.filter(r=>regionAncestors(r.id).includes(cid) && r.id!==cid);
-   return `<optgroup label="${esc(label)}">${ids.map(r=>`<option value="${r.id}" ${selected===r.id?"selected":""}>${esc(r.label)}</option>`).join("")}</optgroup>`;
- }).join("");
+
+
+function normalizeChoiceSearch(value){
+ return String(value||"")
+   .normalize("NFD")
+   .replace(/[\u0300-\u036f]/g,"")
+   .toLowerCase()
+   .trim();
 }
-function selectedValues(el){return Array.from(el.selectedOptions).map(o=>o.value)}
+
+function filterChoiceOptions(input){
+ const root=input.closest(".searchable-picker");
+ if(!root)return;
+ const q=normalizeChoiceSearch(input.value);
+ root.querySelectorAll("[data-search-value]").forEach(el=>{
+   const text=normalizeChoiceSearch(el.dataset.searchValue||"");
+   el.hidden=Boolean(q)&&!text.includes(q);
+ });
+ const empty=root.querySelector(".choice-empty");
+ if(empty){
+   const visible=Array.from(root.querySelectorAll("[data-search-value]")).some(el=>!el.hidden);
+   empty.hidden=visible;
+ }
+}
+
+function clearChoiceSearch(input){
+ input.value="";
+ filterChoiceOptions(input);
+ input.focus();
+}
+
+function regionTrail(id){
+ const out=[];
+ let cur=regionObj(id);
+ while(cur){
+   out.push(cur.label);
+   cur=cur.parent?regionObj(cur.parent):null;
+ }
+ return out;
+}
+
+function regionPickerHtml(id,selected="",mode="player"){
+ const current=selected?regionLabel(selected):"Choisir une région / appellation";
+ const rows=REGION_CATALOG
+   .filter(r=>r.parent)
+   .map(r=>{
+     const trail=regionTrail(r.id);
+     const context=trail.slice(1).join(" · ");
+     const search=trail.join(" ");
+     return `<button type="button" class="choice-option ${selected===r.id?"selected":""}" data-search-value="${esc(search)}" onclick="chooseRegion('${mode}','${esc(id)}','${esc(r.id)}',this)">
+       <span><b>${esc(r.label)}</b>${context?`<small>${esc(context)}</small>`:""}</span>${selected===r.id?"<span>✓</span>":""}
+     </button>`;
+   }).join("");
+ return `<details class="searchable-picker region-picker">
+   <summary><span>${esc(current)}</span><span>⌄</span></summary>
+   <div class="choice-picker-body">
+     <div class="choice-search-wrap">
+       <input type="search" class="choice-search" placeholder="Rechercher une région, appellation…" autocomplete="off" oninput="filterChoiceOptions(this)">
+       <button type="button" class="choice-search-clear" onclick="clearChoiceSearch(this.previousElementSibling)" aria-label="Effacer la recherche">×</button>
+     </div>
+     <button type="button" class="choice-option choice-clear" data-search-value="aucune effacer vide" onclick="chooseRegion('${mode}','${esc(id)}','',this)"><span>Effacer la sélection</span></button>
+     <div class="choice-list">${rows}</div>
+     <div class="choice-empty" hidden>Aucun résultat.</div>
+   </div>
+ </details>`;
+}
+
+async function chooseRegion(mode,id,regionId,button){
+ const picker=button.closest(".region-picker");
+ if(mode==="host")await updateWineSecret(id,"region",regionId||null);
+ else await setAnswer(id,"region",regionId||null);
+ if(!picker)return;
+ const summary=picker.querySelector("summary span:first-child");
+ if(summary)summary.textContent=regionId?regionLabel(regionId):"Choisir une région / appellation";
+ picker.querySelectorAll(".choice-option").forEach(x=>x.classList.remove("selected"));
+ if(regionId)button.classList.add("selected");
+ picker.open=false;
+}
+
 function grapePickerHtml(id,selected,mode){
  const chosen=parseGrapes(selected);
  const count=chosen.length;
- return `<details class="grape-picker" data-picker="${esc(id)}"><summary><span>${count?`${count} cépage${count>1?"s":""} sélectionné${count>1?"s":""}`:"Choisir les cépages"}</span><span>⌄</span></summary>
- <div class=grape-picker-body>${GRAPES.map(g=>`<label class=grape-option><input type=checkbox value="${esc(g)}" ${chosen.includes(g)?"checked":""} onchange="handleGrapeCheck('${mode}','${esc(id)}',this)"><span>${esc(g)}</span></label>`).join("")}</div></details>`;
+ return `<details class="grape-picker searchable-picker" data-picker="${esc(id)}"><summary><span>${count?`${count} cépage${count>1?"s":""} sélectionné${count>1?"s":""}`:"Choisir les cépages"}</span><span>⌄</span></summary>
+ <div class="grape-picker-body choice-picker-body">
+   <div class="choice-search-wrap">
+     <input type="search" class="choice-search" placeholder="Rechercher un cépage…" autocomplete="off" oninput="filterChoiceOptions(this)">
+     <button type="button" class="choice-search-clear" onclick="clearChoiceSearch(this.previousElementSibling)" aria-label="Effacer la recherche">×</button>
+   </div>
+   <div class="choice-list grape-choice-list">${GRAPES.map(g=>`<label class="grape-option ${chosen.includes(g)?"selected":""}" data-search-value="${esc(g)}"><input type=checkbox value="${esc(g)}" ${chosen.includes(g)?"checked":""} onchange="handleGrapeCheck('${mode}','${esc(id)}',this)"><span>${esc(g)}</span></label>`).join("")}</div>
+   <div class="choice-empty" hidden>Aucun cépage trouvé.</div>
+ </div></details>`;
 }
 async function handleGrapeCheck(mode,id,input){
  const box=input.closest(".grape-picker");
+ input.closest(".grape-option")?.classList.toggle("selected",input.checked);
  const values=Array.from(box.querySelectorAll("input[type=checkbox]:checked")).map(x=>x.value);
  const summary=box.querySelector("summary span:first-child");
  summary.textContent=values.length?`${values.length} cépage${values.length>1?"s":""} sélectionné${values.length>1?"s":""}`:"Choisir les cépages";
@@ -923,8 +1064,13 @@ function qrForGame(){
 }
 
 async function boot(){
+ document.body.dataset.screen="auth";updateGlobalHomeButton();
  if(!CONFIG.url||!CONFIG.key||CONFIG.url.includes("COLLE_TA_")||CONFIG.key.includes("COLLE_TA_")){
    document.getElementById("app").innerHTML=`<div class="card hero"><h1>Configuration requise</h1><p>Ajoute ta Publishable Key Supabase dans <b>config.js</b>.</p></div>`;
+   return;
+ }
+ if(!window.supabase?.createClient){
+   document.getElementById("app").innerHTML=`<div class="card hero"><h1>Chargement impossible</h1><p>Le SDK Supabase n’a pas pu être chargé. Vérifie ta connexion puis recharge la page.</p></div>`;
    return;
  }
  supabaseClient=window.supabase.createClient(CONFIG.url,CONFIG.key);
@@ -968,6 +1114,7 @@ async function ensureProfile(){
  return profile;
 }
 function authScreen(message=""){
+ document.body.dataset.screen="auth";updateGlobalHomeButton();
  clearSession();
  document.getElementById("app").innerHTML=`<div class="auth-shell">
  <div class="card hero">
@@ -1001,6 +1148,7 @@ async function sendMagicLink(){
  authScreen(`Lien envoyé à ${email}. Ouvre-le sur ce téléphone ou sur un autre appareil.`);
 }
 function legacyAnonymousScreen(){
+ document.body.dataset.screen="auth";updateGlobalHomeButton();
  document.getElementById("app").innerHTML=`<div class="auth-shell"><div class="card hero">
   <div class=auth-mark>🍷</div><h1>Transforme ton ancien profil</h1>
   <p class=muted>Ce téléphone utilise encore l’ancien mode invité. Tu peux le convertir en compte email pour conserver l’identité associée à tes anciennes dégustations.</p>
@@ -1092,6 +1240,29 @@ function resumeCurrentGame(){
  route();
 }
 
+
+function closeCurrentSession(){
+ if(!game)return home();
+ const label=game.status==="finished"?"Fermer cette session sur cet appareil ?":"Quitter cette session sur cet appareil ?";
+ if(!confirm(`${label}\n\nLa partie et son historique ne seront pas supprimés.`))return;
+ clearSession();
+ home();
+ toast("Session fermée. L’historique est conservé.");
+}
+
+async function deleteCurrentGame(){
+ if(!game||role!=="host")return;
+ const ok=confirm(`Supprimer définitivement la partie ${game.code||""} ?\n\nCette action supprimera la partie et ses données associées.`);
+ if(!ok)return;
+ const r=await supabaseClient.rpc("delete_game",{p_game_id:game.id});
+ if(r.error)return toast(r.error.message);
+ try{await channel?.unsubscribe?.()}catch(e){}
+ channel=null;
+ localStorage.removeItem(SESSION_KEY);
+ game=null;role=null;player=null;wineCache=null;answerCache.clear();
+ toast("Partie supprimée.");
+ home();
+}
 function home(){
  wineCache=null;answerCache.clear();
  document.body.dataset.screen="home";
@@ -1100,13 +1271,17 @@ function home(){
  const activeGame=game?`<div class="card active-game-card" style="max-width:820px;margin:0 auto 22px">
    <div class=wine-head>
      <div>
-       <span class=pill>PARTIE EN COURS</span>
+       <span class=pill>${game.status==="finished"?"PARTIE TERMINÉE":"PARTIE EN COURS"}</span>
        <h2 style="margin:8px 0 4px">${modeBadge()}</h2>
        <p class=muted>${role==="host"?"Tu organises":"Tu participes à"} la partie <b>${esc(game.code||"")}</b>${game.status==="finished"?" · terminée":game.status==="lobby"?" · en attente":" · dégustation en cours"}.</p>
      </div>
      <div class=emoji>${game.experience_mode==="discovery"?"🎓":game.experience_mode==="challenge"?"🥂":"🎯"}</div>
    </div>
-   <button class=btn style="width:100%;margin-top:10px" onclick="resumeCurrentGame()">↩ Reprendre la partie en cours</button>
+   <div class=row style="margin-top:10px;gap:10px;flex-wrap:wrap">
+     <button class=btn style="flex:1;min-width:220px" onclick="resumeCurrentGame()">${game.status==="finished"?"🏁 Voir les résultats":"↩ Reprendre la partie en cours"}</button>
+     <button class="btn secondary" style="flex:1;min-width:220px" onclick="closeCurrentSession()">${game.status==="finished"?"✓ Fermer cette session":"↪ Quitter cette session"}</button>
+     ${role==="host"&&game.status!=="finished"?`<button class="btn secondary" style="flex:1;min-width:220px" onclick="deleteCurrentGame()">🗑️ Abandonner et supprimer</button>`:""}
+   </div>
  </div>`:"";
 
  document.getElementById("app").innerHTML=`<header>
@@ -1132,7 +1307,7 @@ function home(){
 }
 
 function renderCreateExperience(){
- document.body.dataset.screen="home";updateGlobalHomeButton();
+ document.body.dataset.screen="create";updateGlobalHomeButton();
  document.getElementById("app").innerHTML=`<header>
    <div class=logo>🍷 <span>BLIND WINE</span></div>
    <button class="btn secondary" onclick="home()">← Retour</button>
@@ -1180,7 +1355,7 @@ async function createGame(){
  if(!row)return toast("Impossible de créer la partie.");
  game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind'};
  wineCache=null;answerCache.clear();
- role="host";player=null;saveSession();subscribe();renderHostLobby();
+ role="host";player=null;saveSession();subscribe();route();
 }
 async function joinGame(){
  const code=document.getElementById("joinCode").value.trim().toUpperCase();
@@ -1203,7 +1378,7 @@ async function joinGame(){
 function subscribe(){
  if(channel)supabaseClient.removeChannel(channel);
  channel=supabaseClient.channel("game:"+game.id)
-  .on("postgres_changes",{event:"*",schema:"public",table:"games",filter:"id=eq."+game.id},async()=>{await refreshGame();requestRoute()})
+  .on("postgres_changes",{event:"*",schema:"public",table:"games",filter:"id=eq."+game.id},async()=>{const alive=await refreshGame();if(alive)requestRoute()})
   .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:"game_id=eq."+game.id},()=>handlePlayersChange())
   .on("postgres_changes",{event:"*",schema:"public",table:"answers",filter:"game_id=eq."+game.id},payload=>handleAnswerRealtime(payload))
   .on("postgres_changes",{event:"*",schema:"public",table:"wine_reveals",filter:"game_id=eq."+game.id},async()=>{await refreshGame();requestRoute()})
@@ -1227,28 +1402,25 @@ async function handlePlayersChange(){
 async function handleAnswerRealtime(payload){
  if(role!=="host"||game?.status!=="tasting"||game?.phase!=="answering")return;
  if(payload?.new?.done!==true&&payload?.old?.done!==true)return;
- await refreshHostAnswerCount();
+ requestRoute();
 }
-async function refreshHostAnswerCount(){
- const el=document.getElementById("answerProgress");if(!el)return;
- const ws=await getBlindWines(),w=ws[game.current];if(!w)return;
- const [r,ps]=await Promise.all([
-   supabaseClient.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true),
-   getPlayers()
- ]);
- if(r.error)return;
- const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
- el.innerHTML=`<p><b>${answered}</b> / ${total} joueurs ont validé.</p><div class=notice>${answered===total&&total>0?"Tout le monde a répondu.":"Tu peux révéler quand tu le souhaites."}</div>`;
-}
-
 async function refreshGame(){
- const r=await supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).single();
- if(r.data){game=r.data;saveSession()}
+ if(!game)return false;
+ const r=await supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).maybeSingle();
+ if(r.error){toast(r.error.message);return false}
+ if(!r.data){
+   clearSession();
+   home();
+   toast("Cette partie n’existe plus ou a été supprimée.");
+   return false;
+ }
+ game=r.data;saveSession();return true;
 }
 let routePending=false;
 function requestRoute(){
+ if(document.body.dataset.screen!=="game")return;
  if(routePending)return;routePending=true;
- queueMicrotask(()=>{routePending=false;route()});
+ queueMicrotask(()=>{routePending=false;if(document.body.dataset.screen==="game")route()});
 }
 function route(){
  document.body.dataset.screen="game";
@@ -1298,9 +1470,9 @@ async function renderHostLobby(){
   <div><label>Couleur du vin</label><select onchange="updateWineType('${w.id}',this.value)">${typeOptions(w.type)}</select></div>
   <div><label>Nom du vin / cuvée</label><input value="${esc(w.name||"")}" onchange="updateWineSecret('${w.id}','name',this.value)" placeholder="Ex. Whispering Angel"></div>
   <div><label>Prix réel (€)</label><input type=number min=.01 step=.01 value="${w.price??""}" onchange="updateWineSecret('${w.id}','price',this.value===''?null:Number(this.value))"></div>
-  <div><label>Région / appellation</label><select onchange="updateWineSecret('${w.id}','region',this.value)">${groupedRegionOptions(w.region||"")}</select></div>
+  <div><label>Région / appellation</label>${regionPickerHtml(w.id,w.region||"","host")}</div>
   <div style="grid-column:1/-1"><label>Cépage(s) / assemblage</label>${grapePickerHtml(w.id,w.grapes||w.grape,"host")}</div>
-  ${game.experience_mode!=="blind"?`<div style="grid-column:1/-1"><label>🎓 Objectif pédagogique</label><input value="${esc(w.learning_goal||"")}" onchange="updateWineSecret('${w.id}','learning_goal',this.value)" placeholder="Ex. Reconnaître l’acidité et les agrumes d’un Sauvignon"></div>
+  ${game.experience_mode==="discovery"?`<div style="grid-column:1/-1"><label>🎓 Objectif pédagogique</label><input value="${esc(w.learning_goal||"")}" onchange="updateWineSecret('${w.id}','learning_goal',this.value)" placeholder="Ex. Reconnaître l’acidité et les agrumes d’un Sauvignon"></div>
   <div style="grid-column:1/-1"><label>💡 À retenir</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Le message principal que les participants doivent retenir.">${esc(w.learning_note||"")}</textarea></div>`:""}
   ${game.experience_mode==="discovery"?`
   <div style="grid-column:1/-1"><h3 style="margin-bottom:0">Parcours Découverte</h3><p class=muted>Ces contenus apparaissent au bon moment : Œil → Nez → Bouche → Comprendre.</p></div>
@@ -1309,9 +1481,9 @@ async function renderHostLobby(){
   <div style="grid-column:1/-1"><label>👄 Repère en bouche</label><textarea onchange="updateWineSecret('${w.id}','palate_tip',this.value)" placeholder="Ex. Observe l’acidité, la texture et la longueur plutôt que de chercher tout de suite à identifier le vin.">${esc(w.palate_tip||"")}</textarea></div>
   <div style="grid-column:1/-1"><label>🧠 Question du mini-quiz</label><input value="${esc(w.quiz_question||"")}" onchange="updateWineSecret('${w.id}','quiz_question',this.value)" placeholder="Ex. Quel élément explique le mieux la sensation de fraîcheur ?"></div>
   <div style="grid-column:1/-1"><label>Réponses du quiz (une par ligne, 2 à 4)</label><textarea onchange="updateQuizOptions('${w.id}',this.value)" placeholder="L’acidité&#10;Le sucre&#10;Les tanins">${esc((Array.isArray(w.quiz_options)?w.quiz_options:[]).join("\n"))}</textarea></div>
-  <div><label>Bonne réponse</label><select onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))"><option value="">Choisir…</option>${[0,1,2,3].map(i=>`<option value="${i}" ${Number(w.quiz_correct)===i?"selected":""}>Réponse ${i+1}</option>`).join("")}</select></div>
+  <div><label>Bonne réponse</label><select onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))"><option value="">Choisir…</option>${[0,1,2,3].map(i=>`<option value="${i}" ${Number.isInteger(w.quiz_correct)&&w.quiz_correct===i?"selected":""}>Réponse ${i+1}</option>`).join("")}</select></div>
   <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Ex. L’acidité provoque la salivation et donne cette impression de fraîcheur.">${esc(w.quiz_explanation||"")}</textarea></div>`:""}
-  ${game.experience_mode==="challenge"?`<div><label>Indice 1</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)"></div><div><label>Indice 2</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)"></div>`:""}
+  ${game.experience_mode==="challenge"?`<div style="grid-column:1/-1"><label>💡 Explication après révélation</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Ce que les joueurs doivent retenir une fois le vin révélé.">${esc(w.learning_note||"")}</textarea></div><div><label>Indice 1 · léger</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)" placeholder="Ex. Cherche le poivre et les fruits noirs"></div><div><label>Indice 2 · précis</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)" placeholder="Ex. Rhône Nord"></div>`:""}
  </div></div>`).join("")}</div>
  <div class="card sticky"><button class=btn style="width:100%" onclick="startGame()">🚀 Lancer la dégustation</button></div>`;
  setTimeout(qrForGame,0);
@@ -1357,12 +1529,16 @@ async function startGame(){
    });
    if(badQuiz.length)return toast(`Vérifie les mini-quiz des vins : ${badQuiz.map(w=>"#"+(w.position+1)).join(", ")}.`);
  }
+ if(game.experience_mode==="challenge"){
+   const badHints=ws.filter(w=>!String(w.hint1||"").trim()||!String(w.hint2||"").trim());
+   if(badHints.length)return toast(`Ajoute les 2 indices des vins : ${badHints.map(w=>"#"+(w.position+1)).join(", ")}.`);
+ }
  const r=await supabaseClient.rpc("start_game",{p_game_id:game.id});
  if(r.error)toast(r.error.message);
 }
 async function renderPlayerLobby(){
  const ps=await getPlayers();
- document.getElementById("app").innerHTML=`<div class="card hero"><div class=emoji>🍷</div><span class=pill>PARTIE ${esc(game.code)}</span><h1>Salut ${esc(player.name)} !</h1><p>Tu es connecté.</p>
+ document.getElementById("app").innerHTML=`<div class="card hero"><div class=emoji>${modeInfo().icon}</div><span class=pill>PARTIE ${esc(game.code)} · ${modeBadge()}</span><h1>Salut ${esc(player.name)} !</h1><p>Tu es connecté.</p>
  <div class=notice>En attente du lancement de la dégustation…</div><h3>Joueurs</h3><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=chip>👤 ${esc(p.name)}</span>`).join("")}</div></div>`;
 }
 async function getAnswer(wineId,force=false){
@@ -1395,14 +1571,18 @@ function challengeFactor(a){return a.hint_level===1?.75:a.hint_level===2?.5:1}
 function discoveryDefaults(d){
  const grapes=(d?.grapes||[]).join(" / ");
  const identity=[regionLabel(d?.region),grapes].filter(Boolean).join(" · ");
+ const customQuestion=String(d?.quiz_question||"").trim();
+ const customOptions=Array.isArray(d?.quiz_options)?d.quiz_options:[];
+ const hasCustomQuiz=customQuestion!==""&&customOptions.length>=2;
+ const customCorrect=Number.isInteger(d?.quiz_correct)&&d.quiz_correct>=0&&d.quiz_correct<customOptions.length?d.quiz_correct:0;
  return {
    eye_tip:d?.eye_tip||"Observe d’abord la robe sans chercher à identifier le vin : intensité, limpidité et nuances donnent des indices sur son style et son évolution.",
    nose_tip:d?.nose_tip||"Commence par les grandes familles d’arômes. Il est plus utile d’identifier « agrumes » ou « fruits rouges » que de chercher immédiatement un arôme très précis.",
    palate_tip:d?.palate_tip||"En bouche, sépare les sensations : acidité, douceur, corps et longueur. Cette structure est souvent plus fiable que les arômes seuls.",
-   question:d?.quiz_question||"Quel est le meilleur réflexe pour progresser en dégustation ?",
-   options:(Array.isArray(d?.quiz_options)&&d.quiz_options.length>=2)?d.quiz_options:["Mettre des mots sur ses sensations","Trouver absolument le domaine","Se fier uniquement au prix"],
-   correct:0,
-   explanation:"La progression vient surtout de la capacité à décrire ce que l’on ressent, puis à relier ces sensations au style du vin.",
+   question:hasCustomQuiz?customQuestion:"Quel est le meilleur réflexe pour progresser en dégustation ?",
+   options:hasCustomQuiz?customOptions:["Mettre des mots sur ses sensations","Trouver absolument le domaine","Se fier uniquement au prix"],
+   correct:hasCustomQuiz?customCorrect:0,
+   explanation:hasCustomQuiz?(String(d?.quiz_explanation||"").trim()||"Observe la structure du vin et relie-la progressivement à son style."):"La progression vient surtout de la capacité à décrire ce que l’on ressent, puis à relier ces sensations au style du vin.",
    identity
  };
 }
@@ -1507,7 +1687,7 @@ function blindGuessForm(w,a){
  <div class=section><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button class="${a.note===n?"sel":""}" onclick="setAnswer('${w.id}','note',${n})">${n}</button>`).join("")}</div></div>
  <div class=grid>
   <div><label>💰 Prix estimé (€)</label><input type=number min=.01 step=.5 value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="Ex. 15"></div>
-  <div><label>🌍 Région / appellation</label><select onchange="setAnswer('${w.id}','region',this.value)">${groupedRegionOptions(a.region||"")}</select></div>
+  <div><label>🌍 Région / appellation</label>${regionPickerHtml(w.id,a.region||"","player")}</div>
   <div><label>🍇 Cépage(s)</label>${grapePickerHtml(w.id,answerGrapes(a),"player")}</div>
  </div>`;
 }
@@ -1519,7 +1699,7 @@ function renderPlayerBlindTasting(w,a,ws){
    <div class=notice><b>🎯 Objectif :</b> identifier au mieux le prix, la région et les cépages. Maximum : 11 points.</div>
    ${blindGuessForm(w,a)}
    <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🎯 Verrouiller ma réponse</button></div>
- </div>${guideHtml()}`;
+ </div>`;
 }
 
 async function renderPlayerChallengeTasting(w,a,ws){
@@ -1543,7 +1723,7 @@ async function renderPlayerChallengeTasting(w,a,ws){
    </div>
    ${blindGuessForm(w,a)}
    <div class="card sticky" style="margin-top:18px"><button class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🥂 Valider mon challenge</button></div>
- </div>${guideHtml()}`;
+ </div>`;
 }
 function metric(label,key,a){
  return `<div class=section><h3>${label}</h3><div class=scale>${[1,2,3,4,5].map(n=>`<button class="${a.scores?.[key]===n?"sel":""}" onclick="setScore('${a.wine_id||""}','${key}',${n})">${n}</button>`).join("")}</div></div>`;
@@ -1620,7 +1800,7 @@ async function getRevealDashboardData(rv){
  const [playersR,answersR,revealsR]=await Promise.all([
    supabaseClient.from("players").select("user_id,name").eq("game_id",game.id).order("created_at"),
    supabaseClient.from("answers").select("user_id,wine_id,note,price,region,grapes,grape,hint_level,done").eq("game_id",game.id).eq("done",true),
-   supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("game_id",game.id)
+   supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,learning_note,revealed_at").eq("game_id",game.id)
  ]);
  const err=playersR.error||answersR.error||revealsR.error;
  if(err){toast(err.message);return {rows:[],current:[],awards:{},group:{}}}
@@ -1724,7 +1904,7 @@ async function revealWine(){
 }
 async function getCurrentReveal(){
  const ws=await getBlindWines(),w=ws[game.current];if(!w)return null;
- const r=await supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("wine_id",w.id).maybeSingle();
+ const r=await supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,learning_note,revealed_at").eq("wine_id",w.id).maybeSingle();
  return r.data?{...r.data,type:w.type,position:w.position}:null;
 }
 
@@ -1740,12 +1920,12 @@ async function renderHostDiscoveryReveal(){
  const rv=rvR.data,aa=ansR.data||[];if(!rv)return requestRoute();
  const avg=aa.length?aa.reduce((s,a)=>s+Number(a.note||0),0)/aa.length:0;
  const edu=discoveryDefaults(rv);
- const quizCorrect=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
+ const quizCorrect=edu.correct;
  const quiz=aa.filter(a=>Number.isInteger(a.quiz_choice)&&Number(a.quiz_choice)===quizCorrect).length;
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN DU VERRE</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p></div>
  ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
- <div class=card><h2>🧠 Mini-quiz</h2><p><b>${esc(edu.question)}</b></p><p>${quiz}/${aa.length} bonne${quiz>1?"s":""} réponse${aa.length>1?"s":""}.</p><div class=notice>${esc(rv.quiz_explanation||edu.explanation)}</div></div>
+ <div class=card><h2>🧠 Mini-quiz</h2><p><b>${esc(edu.question)}</b></p><p>${quiz}/${aa.length} bonne${quiz>1?"s":""} réponse${aa.length>1?"s":""}.</p><div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><div class=stat><span>❤️ Note plaisir du groupe</span><strong>${aa.length?avg.toFixed(1)+"/10":"—"}</strong></div></div>
  <div class="card sticky"><button class=btn style="width:100%" onclick="nextWine()">${game.current+1>=game.wine_count?"Terminer la soirée":"Passer au vin suivant →"}</button></div>`;
 }
@@ -1761,13 +1941,13 @@ async function renderPlayerDiscoveryReveal(){
  const rv=rvR.data;if(!rv)return requestRoute();
  const edu=discoveryDefaults(rv);
  const opts=edu.options;
- const correct=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
+ const correct=edu.correct;
  const answered=Number.isInteger(a.quiz_choice)&&a.done===true;
  const ok=answered&&Number(a.quiz_choice)===correct;
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div>
  ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
- <div class=card><h2>${!answered?"⏱️ Réponse non validée":ok?"✅ Bien vu":"🧠 Correction"}</h2><p><b>${esc(edu.question)}</b></p>${answered?`<p>Bonne réponse : <b>${esc(opts[correct]||"—")}</b></p>`:`<p class=muted>Tu n’avais pas terminé ce verre avant la révélation.</p>`}<div class=notice>${esc(rv.quiz_explanation||edu.explanation)}</div></div>
+ <div class=card><h2>${!answered?"⏱️ Réponse non validée":ok?"✅ Bien vu":"🧠 Correction"}</h2><p><b>${esc(edu.question)}</b></p>${answered?`<p>Bonne réponse : <b>${esc(opts[correct]||"—")}</b></p>`:`<p class=muted>Tu n’avais pas terminé ce verre avant la révélation.</p>`}<div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><p class=muted>L’organisateur lancera le prochain vin.</p></div>`;
 }
 async function renderPlayerChallengeReveal(){
@@ -1778,7 +1958,7 @@ async function renderPlayerChallengeReveal(){
  const [a,dash]=await Promise.all([getAnswer(rv.wine_id,true),getRevealDashboardData(rv)]);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
  const validated=a.done===true;
- const raw=validated?knowledgeScore(a,rv):0;
+ const raw=validated?knowledgeScore(a,rv,"blind"):0;
  const parts=validated?scoreParts(a,rv,"challenge"):{price:0,region:0,grape:0,total:0,factor:1};
  const myRank=dash.rows.find(x=>x.user_id===user.id)?.rank||0;
  const level=Number(a.hint_level||0);
@@ -1788,6 +1968,7 @@ async function renderPlayerChallengeReveal(){
  <h1 style="margin-top:18px">${parts.total}/11</h1><p class=muted>Score Challenge après application du risque choisi.</p>
  ${!validated?`<div class=notice>⚠️ Réponse non validée : 0 point.</div>`:myRank?`<div class=notice>Classement provisoire : <b>${myRank}${myRank===1?"er":"e"}</b>.</div>`:""}</div>
  <div class=card><h2>🎯 Détail</h2><div class=scorebox><div class=scoreitem><span>Prix</span><b>${parts.price}/5</b></div><div class=scoreitem><span>Région</span><b>${parts.region}/3</b></div><div class=scoreitem><span>Cépages</span><b>${parts.grape}/3</b></div></div></div>
+ ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
  <div class=card><h2>🥂 Classement Challenge</h2>${rankingHtml(dash.rows)}<p class=muted>Les scores affichés intègrent les multiplicateurs d’indices.</p></div>`;
 }
 
@@ -1800,7 +1981,7 @@ async function renderHostChallengeReveal(){
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
 
  const rows=dash.current.map(a=>{
-   const raw=knowledgeScore(a,rv);
+   const raw=knowledgeScore(a,rv,"blind");
    const s=scoreParts(a,rv,"challenge");
    return {...a,raw,adjusted:s.total,factor:s.factor,hints:Number(a.hint_level||0)};
  });
@@ -1811,6 +1992,7 @@ async function renderHostChallengeReveal(){
  <div class="card hero"><div class=emoji>🥂</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p>
  <div class=scorebox><div class=scoreitem><span>Sans indice</span><b>${noHint}/${rows.length}</b></div><div class=scoreitem><span>Indices moyens</span><b>${avgHints.toFixed(1)}</b></div><div class=scoreitem><span>Réponses</span><b>${rows.length}</b></div></div></div>
  <div class=card><h2>🥂 Risque vs résultat</h2><table><tr><th>Joueur</th><th>Indices</th><th>Brut</th><th>×</th><th>Final</th></tr>${rows.map(a=>`<tr><td>${esc(a.playerName)}</td><td>${a.hints}</td><td>${a.raw}/11</td><td>×${a.factor}</td><td><b>${a.adjusted}/11</b></td></tr>`).join("")}</table></div>
+ ${rv.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(rv.learning_note)}</p></div>`:""}
  <div class=card><h2>🏁 Classement Challenge</h2>${rankingHtml(dash.rows)}<button class=btn style="margin-top:16px" onclick="nextWine()">${game.current<(game.wine_count-1)?"Challenge suivant":"Voir le résultat final"}</button></div>`;
 }
 
@@ -1871,6 +2053,7 @@ async function nextWine(){
 
 async function renderProfile(){
  if(!user||!profile)return home();
+ document.body.dataset.screen="profile";updateGlobalHomeButton();
  const playersR=await supabaseClient.from("players").select("game_id,user_id,name,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
  if(playersR.error)return toast(playersR.error.message);
  const participations=playersR.data||[],gameIds=[...new Set(participations.map(p=>p.game_id))];
@@ -1950,9 +2133,9 @@ async function renderPlayerFinished(){
      if(!rv||!a)return "";
      const ed=discoveryDefaults(rv);
      const opts=ed.options;
-     const correct=Number.isInteger(rv.quiz_correct)?Number(rv.quiz_correct):0;
-     const explanation=rv.quiz_explanation||ed.explanation;
-     const question=rv.quiz_question||ed.question;
+     const correct=ed.correct;
+     const explanation=ed.explanation;
+     const question=ed.question;
      const qc=Number(a.quiz_choice),ok=Number.isInteger(qc)&&qc===correct;
      return `<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1} — ${esc(rv.name)}</b><span class=pill>${a.note||"—"}/10</span></div>
        <p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p>
@@ -1972,7 +2155,7 @@ async function renderPlayerFinished(){
    const recap=ws.map((w,i)=>{
      const rv=reveals.find(x=>x.wine_id===w.id),a=as.find(x=>x.wine_id===w.id);
      if(!rv||!a)return "";
-     const r=knowledgeScore(a,rv),s=scoreParts(a,rv,"challenge");
+     const r=knowledgeScore(a,rv,"blind"),s=scoreParts(a,rv,"challenge");
      raw+=r;adjusted+=s.total;hints+=Number(a.hint_level||0);
      return `<div class=wine-row><div class=wine-head><b>🥂 Challenge #${i+1} — ${esc(rv.name)}</b><span class=pill>${s.total}/11</span></div>
        <div class=scorebox><div class=scoreitem><span>Brut</span><b>${r}/11</b></div><div class=scoreitem><span>Indices</span><b>${Number(a.hint_level||0)}</b></div><div class=scoreitem><span>Multiplicateur</span><b>×${s.factor}</b></div></div>
@@ -2000,7 +2183,7 @@ async function renderPlayerFinished(){
    <p class=muted>Ta note plaisir : <b>${a.note}/10</b></p></div>`;
  }).join("");
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>TON RÉCAP</span></header>
- <div class="card hero"><div class=emoji>🏆</div><h1>${Math.round(total*100)/100} points</h1><p class=muted>Maximum théorique : ${ws.length*11} points.${game.experience_mode==="challenge"?" Les indices réduisent les points obtenus.":""}</p></div>
+ <div class="card hero"><div class=emoji>🏆</div><h1>${Math.round(total*100)/100} points</h1><p class=muted>Maximum théorique : ${ws.length*11} points.</p></div>
  <div class=card><h2>Ton récapitulatif</h2>${recap||"<p class=muted>Aucune réponse enregistrée.</p>"}</div>
  <div class=card><button class="btn" onclick="renderProfile()">📚 Voir mon historique</button> <button class="btn secondary" onclick="home()">Accueil</button></div>`;
 }
@@ -2029,7 +2212,7 @@ async function renderHostResults(){
    const quizAnswers=allAnswers.filter(a=>Number.isInteger(a.quiz_choice)&&revealByWine.get(a.wine_id));
    const quizTotal=quizAnswers.filter(a=>{
      const rv=revealByWine.get(a.wine_id);
-     const correct=Number.isInteger(rv?.quiz_correct)?Number(rv.quiz_correct):0;
+     const correct=discoveryDefaults(rv).correct;
      return Number(a.quiz_choice)===correct;
    }).length;
    const quizPossible=quizAnswers.length;
@@ -2048,7 +2231,7 @@ async function renderHostResults(){
      let adjusted=0,raw=0,hints=0,noHintScore=0;
      for(const a of as){
        const rv=revealByWine.get(a.wine_id);if(!rv)continue;
-       const rawScore=knowledgeScore(a,rv);
+       const rawScore=knowledgeScore(a,rv,"blind");
        const scored=scoreParts(a,rv,"challenge");
        raw+=rawScore;adjusted+=scored.total;hints+=Number(a.hint_level||0);
        if(Number(a.hint_level||0)===0)noHintScore+=rawScore;
@@ -2122,7 +2305,7 @@ async function renderHostResults(){
  const bestTasteDev=finiteTaste.length?finiteTaste[0].dev:null;
  const bestTaste=bestTasteDev==null?"—":finiteTaste.filter(x=>Math.abs(x.dev-bestTasteDev)<1e-9).map(x=>x.name).join(" & ");
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>FINAL</span></header>
- <div class="card hero"><div class=emoji>🏆</div><h1>Classement final</h1><p class=muted>Prix + région + cépages${game.experience_mode==="challenge"?" · pénalité selon les indices utilisés":""}.</p></div>
+ <div class="card hero"><div class=emoji>🏆</div><h1>Classement final</h1><p class=muted>Prix + région + cépages.</p></div>
  <div class=podium>${rows.filter(x=>x.rank<=3).map(x=>`<div class=stat center><div class=emoji>${x.rank===1?"🥇":x.rank===2?"🥈":"🥉"}</div><h2>${esc(x.name)}</h2><strong>${x.score} pts</strong><span class=muted>${x.count}/${game.wine_count} vins</span></div>`).join("")}</div>
  <div class=card><h2>🎖️ Badges de la soirée</h2><div class=grid>
   <div class=stat><span>🧠 Meilleur sommelier</span><strong>${esc(bestSommelier)}</strong><span class=muted>${rows.length?Math.max(...rows.map(r=>r.score)):0} pts</span></div>
@@ -2153,11 +2336,17 @@ async function renderHostStats(){
    const avgPrice=game.experience_mode!=="discovery"&&aa.length?aa.reduce((s,a)=>s+Number(a.price||0),0)/aa.length:0;
    const avgNote=aa.length?aa.reduce((s,a)=>s+Number(a.note||0),0)/aa.length:0;
    const avgErr=game.experience_mode!=="discovery"&&aa.length?aa.reduce((s,a)=>s+Math.abs(Number(a.price||0)-Number(rv.price||0)),0)/aa.length:0;
+   const avgHints=game.experience_mode==="challenge"&&aa.length?aa.reduce((s,a)=>s+Number(a.hint_level||0),0)/aa.length:0;
+   const avgChallenge=game.experience_mode==="challenge"&&aa.length?aa.reduce((s,a)=>s+scoreParts(a,rv,"challenge").total,0)/aa.length:0;
+   const quizAnswered=game.experience_mode==="discovery"?aa.filter(a=>Number.isInteger(a.quiz_choice)):[];
+   const quizCorrect=game.experience_mode==="discovery"&&quizAnswered.length?quizAnswered.filter(a=>Number(a.quiz_choice)===discoveryDefaults(rv).correct).length:0;
    const dist=Array.from({length:10},(_,idx)=>aa.filter(a=>Number(a.note)===idx+1).length);
    const max=Math.max(1,...dist);
    return `<div class=card><div class=wine-head><div><span class=pill>VIN ${i+1}</span><h2 style="margin-top:8px">${ICON[w.type]} ${esc(rv.name)}</h2><p class=muted>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div><b>${Number(rv.price).toFixed(2)} €</b></div>
    <div class=stats-grid>
     ${game.experience_mode!=="discovery"?`<div class=stats-kpi><span>Prix estimé moyen</span><b>${avgPrice.toFixed(2)} €</b></div><div class=stats-kpi><span>Écart moyen au vrai prix</span><b>${avgErr.toFixed(2)} €</b></div>`:""}
+    ${game.experience_mode==="challenge"?`<div class=stats-kpi><span>Indices moyens</span><b>${avgHints.toFixed(1)}</b></div><div class=stats-kpi><span>Score Challenge moyen</span><b>${avgChallenge.toFixed(2)}/11</b></div>`:""}
+    ${game.experience_mode==="discovery"?`<div class=stats-kpi><span>Mini-quiz</span><b>${quizAnswered.length?Math.round(quizCorrect/quizAnswered.length*100):0}%</b></div>`:""}
     <div class=stats-kpi><span>Note plaisir moyenne</span><b>${avgNote.toFixed(1)}/10</b></div>
    </div>
    <h3>Distribution des notes</h3><div class=stats-bars>${dist.map((n,idx)=>`<div class=stats-line><span>${idx+1}</span><div class=stats-track><div class=stats-fill style="width:${(n/max)*100}%"></div></div><b>${n}</b></div>`).join("")}</div>

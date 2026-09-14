@@ -1,4 +1,4 @@
--- BLIND WINE V2.7 AUDITED
+-- BLIND WINE V3.5.1 COHERENCE AUDIT
 -- À exécuter dans Supabase > SQL Editor.
 -- Ce script migre une base V2.x existante et renforce le multi-joueur + la confidentialité.
 
@@ -145,11 +145,11 @@ insert into public.wine_secrets(wine_id,game_id,name,price,region,grapes)
 select id,game_id,coalesce(name,''),price,coalesce(region,''),
        case when coalesce(grape,'')='' then '{}'::text[] else string_to_array(grape,' / ') end
 from public.wines
-on conflict (wine_id) do update set
-  name=excluded.name,
-  price=excluded.price,
-  region=excluded.region,
-  grapes=excluded.grapes;
+where btrim(coalesce(name,''))<>''
+   or price is not null
+   or btrim(coalesce(region,''))<>''
+   or btrim(coalesce(grape,''))<>''
+on conflict (wine_id) do nothing;
 
 -- Pour les anciennes parties déjà terminées, créer aussi les révélations.
 insert into public.wine_reveals(wine_id,game_id,name,price,region,grapes)
@@ -193,7 +193,7 @@ $$;
 -- Création atomique : partie + organisateur + bouteilles + secrets.
 drop function if exists public.create_game(integer);
 drop function if exists public.create_game(integer,text);
-create function public.create_game(p_wine_count integer, p_experience_mode text default 'blind')
+create function public.create_game(p_wine_count integer, p_experience_mode text)
 returns table(game_id uuid, code text, status text, current integer, phase text, wine_count integer, host_id uuid, experience_mode text)
 language plpgsql
 security definer
@@ -423,6 +423,7 @@ declare
   total_wines integer;
   incomplete integer;
   bad_quiz integer;
+  bad_hints integer;
 begin
   select * into g from public.games where id=p_game_id for update;
   if g.id is null then raise exception 'Partie introuvable.'; end if;
@@ -459,6 +460,17 @@ begin
 
     if bad_quiz>0 then
       raise exception 'Vérifie les mini-quiz : 2 à 4 réponses et une bonne réponse valide sont requises.';
+    end if;
+  end if;
+
+  if g.experience_mode='challenge' then
+    select count(*) into bad_hints
+    from public.wine_secrets s
+    where s.game_id=p_game_id
+      and (btrim(s.hint1)='' or btrim(s.hint2)='');
+
+    if bad_hints>0 then
+      raise exception 'Ajoute deux indices à chaque vin du mode Challenge avant de lancer.';
     end if;
   end if;
 
@@ -604,6 +616,29 @@ begin
   end if;
 
   select experience_mode into gmode from public.games where id=new.game_id;
+  if gmode is null then
+    raise exception 'Partie introuvable.';
+  end if;
+
+  -- Cohérence forte entre les trois expériences : les champs propres à un mode
+  -- ne peuvent pas être injectés dans un autre mode via l'API REST.
+  if gmode='blind' then
+    if new.hint_level<>0 or new.quiz_choice is not null or new.discovery_step<>0 then
+      raise exception 'Champs incompatibles avec le mode À l’aveugle.';
+    end if;
+  elsif gmode='challenge' then
+    if new.quiz_choice is not null or new.discovery_step<>0 then
+      raise exception 'Champs incompatibles avec le mode Challenge.';
+    end if;
+  elsif gmode='discovery' then
+    if new.hint_level<>0
+       or new.price is not null
+       or btrim(coalesce(new.region,''))<>''
+       or coalesce(array_length(new.grapes,1),0)<>0
+       or btrim(coalesce(new.grape,''))<>'' then
+      raise exception 'Champs incompatibles avec le mode Découverte.';
+    end if;
+  end if;
 
   if new.done then
     if new.note is null then
@@ -784,11 +819,24 @@ create or replace function public.get_discovery_quiz_feedback(p_game_id uuid,p_w
 returns table(quiz_correct integer,quiz_explanation text)
 language sql stable security definer set search_path=public as $$
  select
-   coalesce(s.quiz_correct,0),
-   coalesce(
-     nullif(btrim(s.quiz_explanation),''),
-     'La progression vient surtout de la capacité à décrire ce que l’on ressent, puis à relier ces sensations au style du vin.'
-   )
+   case
+     when btrim(s.quiz_question)<>''
+      and jsonb_array_length(s.quiz_options)>=2
+      and s.quiz_correct is not null
+      and s.quiz_correct>=0
+      and s.quiz_correct<jsonb_array_length(s.quiz_options)
+     then s.quiz_correct else 0
+   end,
+   case
+     when btrim(s.quiz_question)<>''
+      and jsonb_array_length(s.quiz_options)>=2
+      and s.quiz_correct is not null
+      and s.quiz_correct>=0
+      and s.quiz_correct<jsonb_array_length(s.quiz_options)
+     then coalesce(nullif(btrim(s.quiz_explanation),''),
+       'Observe la structure du vin et relie-la progressivement à son style.')
+     else 'La progression vient surtout de la capacité à décrire ce que l’on ressent, puis à relier ces sensations au style du vin.'
+   end
  from public.wine_secrets s
  join public.games g on g.id=s.game_id
  join public.wines w on w.id=s.wine_id and w.game_id=s.game_id
@@ -836,3 +884,33 @@ revoke all on function public.get_challenge_hints(uuid,uuid) from public;
 grant execute on function public.get_discovery_wine(uuid,uuid) to authenticated;
 grant execute on function public.get_discovery_quiz_feedback(uuid,uuid) to authenticated;
 grant execute on function public.get_challenge_hints(uuid,uuid) to authenticated;
+
+
+create or replace function public.delete_game(p_game_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Non authentifié.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.games g
+    where g.id = p_game_id
+      and g.host_id = auth.uid()
+  ) then
+    raise exception 'Seul l''organisateur peut supprimer cette partie.';
+  end if;
+
+  delete from public.games
+  where id = p_game_id
+    and host_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.delete_game(uuid) from public;
+grant execute on function public.delete_game(uuid) to authenticated;
