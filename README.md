@@ -27,3 +27,8 @@ Cette version remplace V3.4.4 pour une installation Supabase neuve.
 
 ## Limite
 Validation statique approfondie effectuée. Pas de vrai test E2E contre ton projet Supabase réel.
+
+## V3.4.6 — Correctif page blanche
+- Corrige `Identifier 'supabase' has already been declared`.
+- Le SDK CDN possède déjà le global `window.supabase`.
+- L'état applicatif utilise désormais `supabaseClient`, sans collision de nom.

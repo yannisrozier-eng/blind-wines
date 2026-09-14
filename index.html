@@ -596,7 +596,7 @@ tr:last-child td{border-bottom:0}
 
 const CONFIG={url:SUPABASE_URL,key:SUPABASE_PUBLISHABLE_KEY};
 const SESSION_KEY="blindwine_v27_session";
-let supabase=null,user=null,profile=null,game=null,role=null,player=null,channel=null;
+let supabaseClient=null,user=null,profile=null,game=null,role=null,player=null,channel=null;
 let wineCache=null;
 const answerCache=new Map();
 let routeSeq=0;
@@ -757,7 +757,7 @@ function saveSession(){
 function clearSession(){
   localStorage.removeItem(SESSION_KEY);
   game=role=player=null;
-  if(channel&&supabase){supabase.removeChannel(channel);channel=null;}
+  if(channel&&supabase){supabaseClient.removeChannel(channel);channel=null;}
 }
 function regionObj(id){return REGION_CATALOG.find(r=>r.id===id)}
 function regionAncestors(id){
@@ -908,12 +908,12 @@ async function boot(){
    document.getElementById("app").innerHTML=`<div class="card hero"><h1>Configuration requise</h1><p>Ajoute ta Publishable Key Supabase dans <b>config.js</b>.</p></div>`;
    return;
  }
- supabase=window.supabase.createClient(CONFIG.url,CONFIG.key);
- const {data,error}=await supabase.auth.getSession();
+ supabaseClient=window.supabase.createClient(CONFIG.url,CONFIG.key);
+ const {data,error}=await supabaseClient.auth.getSession();
  if(error)return toast(error.message);
  user=data.session?.user||null;
 
- supabase.auth.onAuthStateChange((event,session)=>{
+ supabaseClient.auth.onAuthStateChange((event,session)=>{
    const previousId=user?.id||null;
    user=session?.user||null;
    if(event==="SIGNED_OUT"){
@@ -938,11 +938,11 @@ async function resumeAuthenticatedUser(){
 }
 async function ensureProfile(){
  if(!user)return null;
- const r=await supabase.from("profiles").select("*").eq("id",user.id).maybeSingle();
+ const r=await supabaseClient.from("profiles").select("*").eq("id",user.id).maybeSingle();
  if(r.error)return toast(r.error.message);
  if(!r.data){
    const fallback=(user.user_metadata?.display_name||user.email?.split("@")[0]||"Joueur").slice(0,30);
-   const ins=await supabase.from("profiles").upsert({id:user.id,display_name:fallback}).select().single();
+   const ins=await supabaseClient.from("profiles").upsert({id:user.id,display_name:fallback}).select().single();
    if(ins.error)return toast(ins.error.message);
    profile=ins.data;
  }else profile=r.data;
@@ -974,7 +974,7 @@ async function sendMagicLink(){
  if(!displayName)return toast("Entre ton prénom ou ton pseudo.");
  const gameParam=new URLSearchParams(location.search).get("game");
  const redirect=location.origin+location.pathname+(gameParam?`?game=${encodeURIComponent(gameParam)}`:"");
- const r=await supabase.auth.signInWithOtp({
+ const r=await supabaseClient.auth.signInWithOtp({
    email,
    options:{emailRedirectTo:redirect,shouldCreateUser:true,data:{display_name:displayName}}
  });
@@ -997,21 +997,21 @@ async function upgradeAnonymous(){
  const email=document.getElementById("legacyEmail")?.value.trim().toLowerCase();
  const name=document.getElementById("legacyName")?.value.trim();
  if(!email||!email.includes("@")||!name)return toast("Prénom et email requis.");
- const r=await supabase.auth.updateUser({email,data:{display_name:name}});
+ const r=await supabaseClient.auth.updateUser({email,data:{display_name:name}});
  if(r.error)return toast(r.error.message);
  toast("Vérifie ton email et confirme l’adresse. Ton ancien identifiant sera conservé si la confirmation aboutit.");
 }
 async function discardAnonymous(){
- await supabase.auth.signOut();
+ await supabaseClient.auth.signOut();
  profile=null;clearSession();authScreen();
 }
 async function logout(){
- await supabase.auth.signOut();
+ await supabaseClient.auth.signOut();
 }
 async function saveProfile(){
  const name=document.getElementById("profileDisplayName")?.value.trim();
  if(!name)return toast("Le prénom/pseudo est requis.");
- const r=await supabase.from("profiles").update({display_name:name,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();
+ const r=await supabaseClient.from("profiles").update({display_name:name,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();
  if(r.error)return toast(r.error.message);
  profile=r.data;toast("Profil enregistré.");renderProfile();
 }
@@ -1020,7 +1020,7 @@ async function restoreSession(){
  let saved=null;
  try{saved=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
  if(!saved?.gameId)return false;
- const g=await supabase.from("games")
+ const g=await supabaseClient.from("games")
    .select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at")
    .eq("id",saved.gameId).maybeSingle();
  if(g.error||!g.data){clearSession();return false}
@@ -1028,7 +1028,7 @@ async function restoreSession(){
  // Le rôle ne vient jamais de localStorage : l'identité serveur fait foi.
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
-   const p=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
+   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
    if(p.error||!p.data){clearSession();return false}
    player=p.data;
  }else player=null;
@@ -1069,7 +1069,7 @@ function home(){
 async function createGame(){
  const wineCount=Math.max(3,Math.min(20,Number(document.getElementById("wineCount")?.value||9)));
  const experienceMode=document.getElementById("experienceMode")?.value||"blind";
- const r=await supabase.rpc("create_game",{p_wine_count:wineCount,p_experience_mode:experienceMode});
+ const r=await supabaseClient.rpc("create_game",{p_wine_count:wineCount,p_experience_mode:experienceMode});
  if(r.error)return toast(r.error.message);
  const row=Array.isArray(r.data)?r.data[0]:r.data;
  if(!row)return toast("Impossible de créer la partie.");
@@ -1081,7 +1081,7 @@ async function joinGame(){
  const code=document.getElementById("joinCode").value.trim().toUpperCase();
  const name=(profile?.display_name||"").trim();
  if(!code||!name)return toast("Code de partie ou profil incomplet.");
- const r=await supabase.rpc("join_game",{p_code:code,p_name:name});
+ const r=await supabaseClient.rpc("join_game",{p_code:code,p_name:name});
  if(r.error)return toast(r.error.message);
  const row=Array.isArray(r.data)?r.data[0]:r.data;
  if(!row)return toast("Partie introuvable.");
@@ -1089,15 +1089,15 @@ async function joinGame(){
  wineCache=null;answerCache.clear();
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
-   const p=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
+   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
    if(p.error)return toast(p.error.message);
    player=p.data;
  }else player=null;
  saveSession();subscribe();route();
 }
 function subscribe(){
- if(channel)supabase.removeChannel(channel);
- channel=supabase.channel("game:"+game.id)
+ if(channel)supabaseClient.removeChannel(channel);
+ channel=supabaseClient.channel("game:"+game.id)
   .on("postgres_changes",{event:"*",schema:"public",table:"games",filter:"id=eq."+game.id},async()=>{await refreshGame();requestRoute()})
   .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:"game_id=eq."+game.id},()=>handlePlayersChange())
   .on("postgres_changes",{event:"*",schema:"public",table:"answers",filter:"game_id=eq."+game.id},payload=>handleAnswerRealtime(payload))
@@ -1107,7 +1107,7 @@ function subscribe(){
 
 async function handlePlayersChange(){
  if(role==="player"){
-   const p=await supabase.from("players").select("id,name").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
+   const p=await supabaseClient.from("players").select("id,name").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
    if(!p.data){
      clearSession();
      home();
@@ -1128,7 +1128,7 @@ async function refreshHostAnswerCount(){
  const el=document.getElementById("answerProgress");if(!el)return;
  const ws=await getBlindWines(),w=ws[game.current];if(!w)return;
  const [r,ps]=await Promise.all([
-   supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true),
+   supabaseClient.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true),
    getPlayers()
  ]);
  if(r.error)return;
@@ -1137,7 +1137,7 @@ async function refreshHostAnswerCount(){
 }
 
 async function refreshGame(){
- const r=await supabase.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).single();
+ const r=await supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).single();
  if(r.data){game=r.data;saveSession()}
 }
 let routePending=false;
@@ -1160,21 +1160,21 @@ function route(){
 }
 async function getBlindWines(force=false){
  if(!force&&wineCache?.gameId===game.id)return wineCache.rows;
- const r=await supabase.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position");
+ const r=await supabaseClient.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position");
  if(r.error){toast(r.error.message);return []}
  const rows=r.data||[];wineCache={gameId:game.id,rows};return rows;
 }
 async function getHostWines(){
  const [w,s]=await Promise.all([
-  supabase.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position"),
-  supabase.from("wine_secrets").select("wine_id,game_id,name,price,region,grapes,learning_goal,learning_note,hint1,hint2,eye_tip,nose_tip,palate_tip,quiz_question,quiz_options,quiz_correct,quiz_explanation").eq("game_id",game.id)
+  supabaseClient.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position"),
+  supabaseClient.from("wine_secrets").select("wine_id,game_id,name,price,region,grapes,learning_goal,learning_note,hint1,hint2,eye_tip,nose_tip,palate_tip,quiz_question,quiz_options,quiz_correct,quiz_explanation").eq("game_id",game.id)
  ]);
  if(w.error||s.error){toast((w.error||s.error).message);return []}
  const map=new Map((s.data||[]).map(x=>[x.wine_id,x]));
  return (w.data||[]).map(x=>({...x,...(map.get(x.id)||{}),id:x.id,grape:(map.get(x.id)?.grapes||[]).join(" / ")}));
 }
 async function getPlayers(){
- const r=await supabase.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).order("created_at");
+ const r=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).order("created_at");
  if(r.error){toast(r.error.message);return []}
  return r.data||[];
 }
@@ -1213,19 +1213,19 @@ async function renderHostLobby(){
 async function removePlayer(playerId){
  if(game.status!=="lobby")return toast("Tu peux retirer un joueur uniquement avant le lancement.");
  if(!confirm("Retirer ce joueur de la partie ?"))return;
- const r=await supabase.from("players").delete().eq("id",playerId);
+ const r=await supabaseClient.from("players").delete().eq("id",playerId);
  if(r.error)toast(r.error.message);
  else renderHostLobby();
 }
 
 async function updateWineType(id,type){
  wineCache=null;
- const r=await supabase.from("wines").update({type}).eq("id",id);
+ const r=await supabaseClient.from("wines").update({type}).eq("id",id);
  if(r.error)toast(r.error.message);
 }
 async function updateWineSecret(wineId,key,val){
  const patch={[key]:val};
- const r=await supabase.from("wine_secrets").update(patch).eq("wine_id",wineId);
+ const r=await supabaseClient.from("wine_secrets").update(patch).eq("wine_id",wineId);
  if(r.error)toast(r.error.message);
 }
 
@@ -1234,7 +1234,7 @@ async function updateQuizOptions(wineId,text){
  await updateWineSecret(wineId,"quiz_options",options);
 }
 async function updateWineGrapes(wineId,values){
- const r=await supabase.from("wine_secrets").update({grapes:values}).eq("wine_id",wineId);
+ const r=await supabaseClient.from("wine_secrets").update({grapes:values}).eq("wine_id",wineId);
  if(r.error)toast(r.error.message);
 }
 async function startGame(){
@@ -1250,7 +1250,7 @@ async function startGame(){
    });
    if(badQuiz.length)return toast(`Vérifie les mini-quiz des vins : ${badQuiz.map(w=>"#"+(w.position+1)).join(", ")}.`);
  }
- const r=await supabase.rpc("start_game",{p_game_id:game.id});
+ const r=await supabaseClient.rpc("start_game",{p_game_id:game.id});
  if(r.error)toast(r.error.message);
 }
 async function renderPlayerLobby(){
@@ -1261,7 +1261,7 @@ async function renderPlayerLobby(){
 async function getAnswer(wineId,force=false){
  const key=`${game.id}:${wineId}:${user.id}`;
  if(!force&&answerCache.has(key))return answerCache.get(key);
- const r=await supabase.from("answers").select("*").eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).maybeSingle();
+ const r=await supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).maybeSingle();
  if(r.error)toast(r.error.message);
  const value=r.data||{game_id:game.id,wine_id:wineId,user_id:user.id,scores:{},aromas:[],note:null,price:null,region:"",grapes:[],grape:"",hint_level:0,discovery_step:0,quiz_choice:null,done:false};
  answerCache.set(key,value);return value;
@@ -1269,17 +1269,17 @@ async function getAnswer(wineId,force=false){
 
 async function getDiscoveryWine(wineId){
  if(game.experience_mode!=="discovery")return null;
- const r=await supabase.rpc("get_discovery_wine",{p_game_id:game.id,p_wine_id:wineId});
+ const r=await supabaseClient.rpc("get_discovery_wine",{p_game_id:game.id,p_wine_id:wineId});
  return r.error?null:(Array.isArray(r.data)?r.data[0]:r.data);
 }
 async function getDiscoveryQuizFeedback(wineId){
  if(game.experience_mode!=="discovery")return null;
- const r=await supabase.rpc("get_discovery_quiz_feedback",{p_game_id:game.id,p_wine_id:wineId});
+ const r=await supabaseClient.rpc("get_discovery_quiz_feedback",{p_game_id:game.id,p_wine_id:wineId});
  return r.error?null:(Array.isArray(r.data)?r.data[0]:r.data);
 }
 async function getChallengeHints(wineId){
  if(game.experience_mode!=="challenge")return {};
- const r=await supabase.rpc("get_challenge_hints",{p_game_id:game.id,p_wine_id:wineId});
+ const r=await supabaseClient.rpc("get_challenge_hints",{p_game_id:game.id,p_wine_id:wineId});
  return r.error?{}:(Array.isArray(r.data)?r.data[0]:r.data)||{};
 }
 async function revealHint(wineId,level){const a=await getAnswer(wineId);if(a.done)return;await upsertAnswer(wineId,{hint_level:Math.max(a.hint_level||0,level)});renderPlayerTasting()}
@@ -1417,7 +1417,7 @@ async function upsertAnswer(wineId,patch){
  const payload={...a,...patch};delete payload.id;delete payload.created_at;
  const key=`${game.id}:${wineId}:${user.id}`;
  answerCache.set(key,payload);
- const r=await supabase.from("answers").upsert(payload,{onConflict:"game_id,wine_id,user_id"}).select().single();
+ const r=await supabaseClient.from("answers").upsert(payload,{onConflict:"game_id,wine_id,user_id"}).select().single();
  if(r.error){answerCache.set(key,a);return toast(r.error.message)}
  answerCache.set(key,r.data);return r.data;
 }
@@ -1427,7 +1427,7 @@ async function submitAnswer(wineId){
  if(!a.note)return toast("Ajoute ta note globale.");
  if(game.experience_mode==="discovery"&&!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
  if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
- const r=await supabase.from("answers").update({done:true}).eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).eq("done",false);
+ const r=await supabaseClient.from("answers").update({done:true}).eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).eq("done",false);
  if(r.error)return toast(r.error.message);
  const key=`${game.id}:${wineId}:${user.id}`;answerCache.set(key,{...a,done:true});
  renderPlayerTasting();
@@ -1471,9 +1471,9 @@ function closestPriceNames(items,realPrice){
 }
 async function getRevealDashboardData(rv){
  const [playersR,answersR,revealsR]=await Promise.all([
-   supabase.from("players").select("user_id,name").eq("game_id",game.id).order("created_at"),
-   supabase.from("answers").select("user_id,wine_id,note,price,region,grapes,grape,hint_level,done").eq("game_id",game.id).eq("done",true),
-   supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("game_id",game.id)
+   supabaseClient.from("players").select("user_id,name").eq("game_id",game.id).order("created_at"),
+   supabaseClient.from("answers").select("user_id,wine_id,note,price,region,grapes,grape,hint_level,done").eq("game_id",game.id).eq("done",true),
+   supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("game_id",game.id)
  ]);
  const err=playersR.error||answersR.error||revealsR.error;
  if(err){toast(err.message);return {rows:[],current:[],awards:{},group:{}}}
@@ -1530,7 +1530,7 @@ function rankingHtml(rows){
 async function renderHostTasting(){
  const [ws,ps]=await Promise.all([getBlindWines(),getPlayers()]);
  const w=ws[game.current];if(!w)return;
- const r=await supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
+ const r=await supabaseClient.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
  const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><span class=pill>${TYPES[w.type]}</span><h1>Vin #${game.current+1}</h1>
@@ -1540,17 +1540,17 @@ async function renderHostTasting(){
 async function revealWine(){
  const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
  const w=ws[game.current];if(!w)return;
- const ar=await supabase.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
+ const ar=await supabaseClient.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
  if(ar.error)return toast(ar.error.message);
  const answered=ar.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
  if(total===0)return toast("Ajoute au moins un joueur avant de révéler.");
  if(answered<total&&!confirm(`${total-answered} joueur(s) n'ont pas encore validé. Révéler quand même ?`))return;
- const rr=await supabase.rpc("reveal_current_wine",{p_game_id:game.id});
+ const rr=await supabaseClient.rpc("reveal_current_wine",{p_game_id:game.id});
  if(rr.error)return toast(rr.error.message);
 }
 async function getCurrentReveal(){
  const ws=await getBlindWines(),w=ws[game.current];if(!w)return null;
- const r=await supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("wine_id",w.id).maybeSingle();
+ const r=await supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").eq("wine_id",w.id).maybeSingle();
  return r.data?{...r.data,type:w.type,position:w.position}:null;
 }
 
@@ -1558,8 +1558,8 @@ async function renderHostDiscoveryReveal(){
  const pos=game.current;
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
  const [rvR,ansR]=await Promise.all([
-   supabase.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
-   supabase.from("answers").select("note,quiz_choice").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
+   supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
+   supabaseClient.from("answers").select("note,quiz_choice").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
  ]);
  if(rvR.error||ansR.error)return toast((rvR.error||ansR.error).message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
@@ -1579,7 +1579,7 @@ async function renderPlayerDiscoveryReveal(){
  const pos=game.current;
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
  const [rvR,a]=await Promise.all([
-   supabase.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
+   supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
    getAnswer(w.id,true)
  ]);
  if(rvR.error)return toast(rvR.error.message);
@@ -1647,21 +1647,21 @@ async function renderPlayerReveal(){
 }
 async function nextWine(){
  if(game.phase!=="revealed")return;
- const r=await supabase.rpc("advance_game",{p_game_id:game.id});
+ const r=await supabaseClient.rpc("advance_game",{p_game_id:game.id});
  if(r.error)toast(r.error.message);
 }
 
 async function renderProfile(){
  if(!user||!profile)return home();
- const playersR=await supabase.from("players").select("game_id,user_id,name,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
+ const playersR=await supabaseClient.from("players").select("game_id,user_id,name,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
  if(playersR.error)return toast(playersR.error.message);
  const participations=playersR.data||[],gameIds=[...new Set(participations.map(p=>p.game_id))];
  let games=[],answers=[],reveals=[];
  if(gameIds.length){
    const [gamesR,answersR,revealsR]=await Promise.all([
-     supabase.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").in("id",gameIds).order("created_at",{ascending:false}),
-     supabase.from("answers").select("game_id,wine_id,note,price,region,grapes,grape,hint_level,quiz_choice,done").eq("user_id",user.id).eq("done",true).in("game_id",gameIds),
-     supabase.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").in("game_id",gameIds)
+     supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").in("id",gameIds).order("created_at",{ascending:false}),
+     supabaseClient.from("answers").select("game_id,wine_id,note,price,region,grapes,grape,hint_level,quiz_choice,done").eq("user_id",user.id).eq("done",true).in("game_id",gameIds),
+     supabaseClient.from("wine_reveals").select("wine_id,game_id,name,price,region,grapes,revealed_at").in("game_id",gameIds)
    ]);
    const err=gamesR.error||answersR.error||revealsR.error;if(err)return toast(err.message);
    games=gamesR.data||[];answers=answersR.data||[];reveals=revealsR.data||[];
@@ -1720,8 +1720,8 @@ async function renderProfile(){
 async function renderPlayerFinished(){
  const [ws,rr,ar]=await Promise.all([
   getBlindWines(),
-  supabase.from("wine_reveals").select("*").eq("game_id",game.id),
-  supabase.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true)
+  supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id),
+  supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true)
  ]);
  const err=rr.error||ar.error;if(err)return toast(err.message);
  const reveals=rr.data||[],as=ar.data||[];
@@ -1770,8 +1770,8 @@ async function renderPlayerFinished(){
 async function renderHostResults(){
  const [ws,pss,rr,aa] = await Promise.all([
    getBlindWines(),getPlayers(),
-   supabase.from("wine_reveals").select("*").eq("game_id",game.id),
-   supabase.from("answers").select("*").eq("game_id",game.id).eq("done",true)
+   supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id),
+   supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("done",true)
  ]);
  if(rr.error||aa.error)return toast((rr.error||aa.error).message);
  const ps=(pss||[]).filter(p=>p.user_id!==game.host_id),reveals=rr.data||[];
@@ -1863,8 +1863,8 @@ async function renderHostResults(){
 async function renderHostStats(){
  const [ws,rr,ar]=await Promise.all([
    getBlindWines(),
-   supabase.from("wine_reveals").select("*").eq("game_id",game.id),
-   supabase.from("answers").select("*").eq("game_id",game.id).eq("done",true)
+   supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id),
+   supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("done",true)
  ]);
  const err=rr.error||ar.error;if(err)return toast(err.message);
  const reveals=rr.data||[],answers=ar.data||[];
