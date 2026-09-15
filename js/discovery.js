@@ -165,8 +165,23 @@ function discoveryFocusHtml(goal,step){
 function discoveryProgress(step){return `<div class=discovery-progress>${[0,1,2,3,4].map(i=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>`}
 
 async function setDiscoveryStep(wineId,step){
- await upsertAnswer(wineId,{discovery_step:Math.max(0,Math.min(4,step))});
- renderPlayerTasting();
+ const target=Math.max(0,Math.min(4,step));
+ const a=await getAnswer(wineId);
+ const current=Math.max(0,Math.min(4,Number(a.discovery_step||0)));
+ if(target>current){
+   if(current===1&&!a.scores?.look)return toast("Positionne d’abord l’intensité visuelle.");
+   if(current===2){
+     if(!a.scores?.nose)return toast("Positionne d’abord l’intensité aromatique.");
+     if(!(a.aromas||[]).length)return toast("Choisis au moins une famille d’arômes avant de continuer.");
+   }
+   if(current===3){
+     const missing=[['acid','l’acidité'],['sweet','la douceur'],['body','le corps'],['finish','la persistance']].find(([key])=>!a.scores?.[key]);
+     if(missing)return toast(`Positionne d’abord ${missing[1]} du vin.`);
+     if(!a.note)return toast("Ajoute ta note de plaisir avant de passer à la compréhension.");
+   }
+ }
+ const saved=await upsertAnswer(wineId,{discovery_step:target});
+ if(saved)renderPlayerTasting();
 }
 
 async function chooseDiscoveryQuiz(wineId,index){
@@ -262,7 +277,7 @@ function discoveryMissionText(goal){
 
 function discoverySessionProgressHtml(progress,currentIndex,totalWines){
  const completed=Number(progress?.total||0),notions=Number(progress?.notions?.length||0),quizRate=completed?Math.round((progress.correct||0)/completed*100):null;
- const percent=Math.max(0,Math.min(100,Math.round((currentIndex/Math.max(1,totalWines))*100)));
+ const percent=Math.max(0,Math.min(100,Math.round(((currentIndex+1)/Math.max(1,totalWines))*100)));
  return `<div class="discovery-session-progress"><div class="session-progress-head"><span>TON PARCOURS</span><b>${currentIndex+1}/${totalWines} verres</b></div><div class="session-progress-track"><i style="width:${percent}%"></i></div><div class="session-progress-stats"><span>🎓 ${notions} notion${notions>1?'s':''} explorée${notions>1?'s':''}</span><span>${quizRate==null?'🧠 Premier quiz à venir':`🧠 ${quizRate}% aux mini-quiz`}</span></div></div>`;
 }
 
@@ -320,7 +335,7 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null,sessionP
     <div class=row><span>💪 Corps</span><b>${sensoryLabel(a.scores?.body)}</b></div>
     <div class=row><span>❤️ Plaisir</span><b>${a.note?`${a.note}/10`:"—"}</b></div>
    </div>
-   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button type="button" class=btn ${(!a.note||!answered||(previousAnswer&&!a.discovery_compare?.choice))?"disabled":""} ${(!a.note||!answered||(previousAnswer&&!a.discovery_compare?.choice))?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button type="button" class=btn ${(!a.note||!answered||(previousAnswer&&!a.discovery_compare?.choice))?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
    ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:''}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:''}${previousAnswer&&!a.discovery_compare?.choice?`<p class=muted>Compare ce vin avec le précédent avant de terminer.</p>`:''}
    </div>`;
  }
@@ -360,7 +375,8 @@ async function renderPlayerDiscoveryReveal(){
    prevWine?getAnswer(prevWine.id,true):Promise.resolve(null),
    supabaseClient.from("answers").select("discovery_compare").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
  ]);
- if(rvR.error)return toast(rvR.error.message);
+ const revealError=rvR.error||groupR.error;
+ if(revealError)return toast(revealError.message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
  const rv=rvR.data;if(!rv)return requestRoute();
  const edu=discoveryDefaults(rv);

@@ -36,6 +36,8 @@ async function renderPlayerTasting(){
     supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true),
     supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id)
    ]);
+   const progressError=doneR.error||revealR.error;
+   if(progressError)return toast(progressError.message);
    const previousWine=game.current>0?ws[game.current-1]:null;
    const previousAnswer=previousWine?await getAnswer(previousWine.id,true):null;
    const sessionProgress=discoveryProgressSummary(doneR.data||[],revealR.data||[],ws);
@@ -198,7 +200,12 @@ async function submitAnswer(wineId){
  const a=await getAnswer(wineId,true);
  if(a.done)return;
  if(!a.note)return toast("Ajoute ta note globale.");
- if(game.experience_mode==="discovery"&&!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
+ if(game.experience_mode==="discovery"){
+   const requiredScores=['look','nose','acid','sweet','body','finish'];
+   if(requiredScores.some(key=>!a.scores?.[key]))return toast("Complète les repères sensoriels avant de terminer ce verre.");
+   if(!(a.aromas||[]).length)return toast("Choisis au moins une famille d’arômes avant de terminer.");
+   if(!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
+ }
  if(game.experience_mode==="discovery"&&game.current>0&&!a.discovery_compare?.choice)return toast("Compare ce vin avec le précédent avant de terminer.");
  if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
 
