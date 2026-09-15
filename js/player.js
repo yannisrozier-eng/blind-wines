@@ -22,10 +22,12 @@ async function renderPlayerTasting(){
  const a=await getAnswer(w.id);
 
  if(a.done){
-   const waitTitle=game.experience_mode==="discovery"?"Étape enregistrée":game.experience_mode==="challenge"?"Pronostic verrouillé":"Réponse enregistrée";
-   const waitIcon=game.experience_mode==="discovery"?"🎓":game.experience_mode==="challenge"?"🥂":"✅";
+   const waitTitle=game.experience_mode==="discovery"?"Étape enregistrée":game.experience_mode==="challenge"?"Pronostic verrouillé":"Pronostic verrouillé";
+   const waitIcon=game.experience_mode==="discovery"?"🎓":game.experience_mode==="challenge"?"🥂":"🔒";
+   const waitCopy=game.experience_mode==="blind"?"Ton pari est scellé. Maintenant, regarde les autres hésiter 👀":game.experience_mode==="discovery"?"Ton étape est enregistrée. Le groupe poursuit l’expérience.":"Ton pronostic est verrouillé.";
+   const waitNotice=game.experience_mode==="blind"?"🔒 Plus de retour en arrière. Révélation dès que l’organisateur lance le 3… 2… 1…":"Cette réponse est verrouillée pour ce vin.";
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span></header>
-   <div class="card hero"><div class=emoji>${waitIcon}</div><h1>${waitTitle}</h1><p class=muted>Attends que l'organisateur révèle le vin.</p><div class=notice>Cette réponse est verrouillée pour ce vin.</div></div>`;
+   <div class="card hero"><div class=emoji>${waitIcon}</div><h1>${waitTitle}</h1><p class=muted>${waitCopy}</p><div class=notice>${waitNotice}</div></div>`;
    return;
  }
 
@@ -81,25 +83,92 @@ function filterRegionGrapeGuide(input){
  if(empty)empty.hidden=visible>0;
 }
 
+function blindRoundIntroKey(wineId){return `blindwine:blind-round:${game.id}:${wineId}:${user.id}`}
+
+function hasSeenBlindRoundIntro(wineId){return sessionStorage.getItem(blindRoundIntroKey(wineId))==="1"}
+
+function startBlindRound(wineId){
+ sessionStorage.setItem(blindRoundIntroKey(wineId),"1");
+ renderPlayerTasting();
+}
+
+function blindRoundIntroHtml(w,ws){
+ const round=game.current+1;
+ const punchlines=["Fais confiance à ton nez.","Ton palais a peut-être déjà la réponse.","Pas d’étiquette. Juste toi et le verre.","Observe. Goûte. Puis ose ton pari."];
+ return `<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎯 À L’AVEUGLE</span></header>
+ <div class="blind-round-intro">
+   <div class="blind-round-number">MANCHE ${round}<span>/ ${ws.length}</span></div>
+   <div class="blind-round-glass">${ICON[w.type]}</div>
+   <div class="blind-round-kicker">11 POINTS EN JEU</div>
+   <h1>À toi de lire le verre.</h1>
+   <p>${punchlines[(round-1)%punchlines.length]}</p>
+   <div class="blind-round-objectives"><span>💰 Prix <b>5 pts</b></span><span>🗺️ Région <b>3 pts</b></span><span>🍇 Cépages <b>3 pts</b></span></div>
+   <button type="button" class="btn blind-round-start" onclick="startBlindRound('${w.id}')">🍷 Je déguste</button>
+ </div>`;
+}
+
+function blindBetSummaryHtml(a){
+ const grapes=answerGrapes(a);
+ return `<div class="blind-lock-summary">
+   <div><span>💰 Ton prix</span><b>${a.price!=null&&a.price>0?Number(a.price).toFixed(2)+" €":"—"}</b></div>
+   <div><span>🗺️ Ta région</span><b>${a.region?esc(regionLabel(a.region)):"—"}</b></div>
+   <div><span>🍇 Ton pari cépage</span><b>${grapes.length?esc(grapes.join(" / ")):"—"}</b></div>
+ </div>`;
+}
+
+async function requestBlindLock(wineId){
+ const key=`${game.id}:${wineId}:${user.id}`;
+ const pending=answerWriteQueues.get(key);if(pending)await pending.catch(()=>{});
+ const a=await getAnswer(wineId,true);
+ if(a.done)return;
+ if(!a.note)return toast("Ajoute ta note plaisir avant de verrouiller.");
+ if(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length)return toast("Complète tes 3 paris : prix, région et cépage(s).");
+ const overlay=document.createElement("div");
+ overlay.className="blind-lock-overlay";
+ overlay.innerHTML=`<div class="blind-lock-modal" role="dialog" aria-modal="true" aria-label="Confirmer le pronostic">
+   <button type="button" class="blind-lock-close" aria-label="Fermer">×</button>
+   <div class="blind-lock-icon">🔒</div><div class="blind-lock-kicker">DERNIER REGARD</div>
+   <h2>Tu verrouilles ce pari ?</h2>
+   <p class="muted">Après validation, plus de retour en arrière.</p>
+   ${blindBetSummaryHtml(a)}
+   <div class="blind-lock-actions"><button type="button" class="btn secondary blind-lock-cancel">Je vérifie encore</button><button type="button" class="btn blind-lock-confirm">🔥 Je verrouille</button></div>
+ </div>`;
+ const close=()=>overlay.remove();
+ overlay.querySelector('.blind-lock-close').onclick=close;
+ overlay.querySelector('.blind-lock-cancel').onclick=close;
+ overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+ overlay.querySelector('.blind-lock-confirm').onclick=async()=>{const b=overlay.querySelector('.blind-lock-confirm');b.disabled=true;b.textContent='🔒 Verrouillage…';await submitAnswer(wineId);close()};
+ document.body.appendChild(overlay);
+}
+
 function blindGuessForm(w,a){
- return `${metric("👁️ Intensité visuelle","look",a)}${metric("👃 Intensité aromatique","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
- <div class="section player-aromas"><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
- <div class="section player-note"><h3>❤️ Ta note globale</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
- <div class="grid player-guess-grid">
-  <div><label>💰 Prix estimé (€)</label><input type=number min=.01 step=.5 value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="Ex. 15"></div>
-  <div><label>🌍 Région / appellation</label>${regionPickerHtml(w.id,a.region||"","player")}</div>
-  <div><label>🍇 Cépage(s)</label>${grapePickerHtml(w.id,answerGrapes(a),"player")}</div>
+ const grapes=answerGrapes(a);
+ return `<div class="blind-senses-card">
+   <div class="blind-section-head"><div><span>1 · TES SENSATIONS</span><h2>Lis le verre</h2></div><span class="blind-section-badge">Aide à la décision</span></div>
+   <p class="muted">Note rapidement ce que tu ressens. Ici, aucun point : ces repères servent seulement à construire ton pari.</p>
+   <div class="blind-sensory-grid">${metric("👁️ Visuel","look",a)}${metric("👃 Nez","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur","sweet",a)}${metric("💪 Corps","body",a)}${metric("⏱️ Finale","finish",a)}</div>
+   <details class="blind-aromas-details"><summary>👃 Arômes que je repère <span>${(a.aromas||[]).length?`· ${(a.aromas||[]).length} sélectionné${(a.aromas||[]).length>1?'s':''}`:'· facultatif'}</span></summary><div class="chips">${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></details>
+   <div class="blind-pleasure"><span>❤️ Coup de cœur ?</span><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
+ </div>
+ <div class="blind-bets-card">
+   <div class="blind-section-head"><div><span>2 · TES PARIS</span><h2>Maintenant, engage-toi.</h2></div><span class="blind-section-badge hot">11 pts</span></div>
+   <div class="blind-bet blind-bet-price"><div class="blind-bet-title"><span>💰 Combien coûte cette bouteille ?</span><small>Jusqu’à 5 points</small></div><div class="blind-price-wrap"><input type="number" inputmode="decimal" min=".01" step=".5" value="${a.price??""}" onchange="setAnswer('${w.id}','price',this.value===''?null:Number(this.value))" placeholder="00"><span>€</span></div><p class="blind-bet-whisper">${a.price?`${Number(a.price).toFixed(0)} €… tu assumes ? 👀`:'Pose ton estimation. Pas besoin d’être raisonnable.'}</p></div>
+   <div class="blind-bet"><div class="blind-bet-title"><span>🗺️ Tu la places où ?</span><small>Jusqu’à 3 points</small></div>${regionPickerHtml(w.id,a.region||"","player")}</div>
+   <div class="blind-bet"><div class="blind-bet-title"><span>🍇 Ton pari cépage</span><small>Jusqu’à 3 points</small></div>${grapePickerHtml(w.id,grapes,"player")}<p class="blind-bet-whisper">${grapes.length===1?`${esc(grapes[0])} seul ? Gros pari.`:grapes.length>1?`${grapes.length} cépages joués. Chaque choix compte.`:'Choisis seulement ceux que tu assumes.'}</p></div>
  </div>`;
 }
 
 function renderPlayerBlindTasting(w,a,ws){
- document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎯 À L’AVEUGLE</span></header>
- <div class="card player-sheet">
-   <div class=wine-head><div><span class=pill>VIN ${game.current+1} / ${ws.length}</span><h1>À toi de trouver</h1><p class=muted>Aucun indice spécifique au vin. Fais confiance à tes sens et utilise le mémo général si besoin.</p></div><div class=emoji>${ICON[w.type]}</div></div>
-   <div class=notice><b>🎯 Objectif :</b> identifier au mieux le prix, la région et les cépages. Maximum : 11 points.</div>
-   ${regionGrapeGuideHtml()}
+ if(!hasSeenBlindRoundIntro(w.id)){
+   document.getElementById("app").innerHTML=blindRoundIntroHtml(w,ws);
+   return;
+ }
+ document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>VIN ${game.current+1}/${ws.length}</span></header>
+ <div class="card player-sheet blind-player-sheet">
+   <div class="blind-play-head"><div><span class="blind-live-pill">● MANCHE ${game.current+1}</span><h1>Quel vin se cache ici ?</h1><p class=muted>Construis ton intuition, puis engage tes 3 paris.</p></div><div class="blind-points-orbit"><b>11</b><span>PTS</span></div></div>
    ${blindGuessForm(w,a)}
-   <div class="card sticky player-action" style="margin-top:18px"><button type="button" class=btn style="width:100%" onclick="submitAnswer('${w.id}')">🎯 Verrouiller ma réponse</button></div>
+   ${regionGrapeGuideHtml()}
+   <div class="card sticky player-action blind-lock-bar"><div><small>Quand tu es sûr de toi</small><b>Prix · Région · Cépages</b></div><button type="button" class="btn" onclick="requestBlindLock('${w.id}')">🔒 Verrouiller mon pari</button></div>
  </div>`;
 }
 
@@ -225,6 +294,46 @@ async function submitAnswer(wineId){
  renderPlayerTasting();
 }
 
+function blindPerformanceLabel(total){
+ if(total>=11)return {icon:"💎",title:"PARFAIT",text:"11/11. Tu viens de lire le verre comme une étiquette."};
+ if(total>=9)return {icon:"🔥",title:"PRESQUE PARFAIT",text:"Très grosse manche. Tu étais tout près du sans-faute."};
+ if(total>=7)return {icon:"🎯",title:"BIEN VU",text:"Solide. Ton intuition était clairement dans la bonne direction."};
+ if(total>=4)return {icon:"👀",title:"TU CHAUFFES",text:"Quelques bons signaux. La prochaine bouteille peut faire basculer la soirée."};
+ return {icon:"🍷",title:"PIÈGE DU VERRE",text:"Cette bouteille t’a eu. C’est exactement pour ça qu’on joue à l’aveugle."};
+}
+
+function blindStreakCount(items,predicate){
+ let n=0;for(let i=items.length-1;i>=0;i--){if(predicate(items[i]))n++;else break}return n;
+}
+
+async function getBlindMomentum(){
+ const [ws,answersR,revealsR]=await Promise.all([
+   getBlindWines(),
+   supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true),
+   supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id)
+ ]);
+ const err=answersR.error||revealsR.error;if(err){toast(err.message);return null}
+ const answerByWine=new Map((answersR.data||[]).map(x=>[x.wine_id,x]));
+ const revealByWine=new Map((revealsR.data||[]).map(x=>[x.wine_id,x]));
+ const played=ws.filter(w=>answerByWine.has(w.id)&&revealByWine.has(w.id)&&w.position<=game.current).map(w=>({w,a:answerByWine.get(w.id),r:revealByWine.get(w.id)}));
+ const price=blindStreakCount(played,x=>priceScore(x.a.price,x.r.price)>=4);
+ const region=blindStreakCount(played,x=>regionScore(x.a.region,x.r.region)===3);
+ const grape=blindStreakCount(played,x=>grapeScore(answerGrapes(x.a),x.r.grapes)===3);
+ const best=[{icon:"💰",label:`${price} prix précis d’affilée`,n:price},{icon:"🗺️",label:`${region} régions exactes d’affilée`,n:region},{icon:"🍇",label:`${grape} cépages parfaits d’affilée`,n:grape}].sort((a,b)=>b.n-a.n)[0];
+ const totals=played.reduce((acc,x)=>{const sc=scoreParts(x.a,x.r,"blind");acc.price+=sc.price;acc.region+=sc.region;acc.grape+=sc.grape;return acc},{price:0,region:0,grape:0});
+ const count=Math.max(1,played.length);
+ const profiles=[
+   {key:"price",pct:totals.price/(count*5),icon:"💰",title:"Œil du marché",text:"Tu lis particulièrement bien la valeur des bouteilles."},
+   {key:"region",pct:totals.region/(count*3),icon:"🗺️",title:"Cartographe",text:"Ta force du soir : replacer les vins sur la carte."},
+   {key:"grape",pct:totals.grape/(count*3),icon:"🍇",title:"Nez à cépages",text:"Tu fais la différence quand il faut miser sur les cépages."}
+ ].sort((a,b)=>b.pct-a.pct);
+ return {price,region,grape,best:best.n>=2?best:null,style:played.length?profiles[0]:null};
+}
+
+function blindPointLine(icon,label,score,max,answer,truth,delay){
+ return `<div class="blind-point-line" style="--delay:${delay}ms"><div class="blind-point-icon">${icon}</div><div class="blind-point-copy"><span>${label}</span><small>${esc(answer)} → ${esc(truth)}</small></div><div class="blind-point-score"><b>+${score}</b><span>/${max}</span></div></div>`;
+}
+
 async function renderPlayerReveal(){
  const rv=await getCurrentReveal();
  if(!rv){
@@ -233,26 +342,32 @@ async function renderPlayerReveal(){
  }
  await playRevealIntro(rv);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
- const [a,dash]=await Promise.all([getAnswer(rv.wine_id,true),getRevealDashboardData(rv)]);
+ const [a,dash,momentum]=await Promise.all([getAnswer(rv.wine_id,true),getRevealDashboardData(rv),getBlindMomentum()]);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==rv.position)return requestRoute();
  const validated=a.done===true;
- const parts=validated?scoreParts(a,rv,game.experience_mode):{price:0,region:0,grape:0,total:0,factor:1};
- const ps=parts.price;
- const rs=parts.region;
- const gs=parts.grape;
+ const parts=validated?scoreParts(a,rv,"blind"):{price:0,region:0,grape:0,total:0,factor:1};
  const total=parts.total;
  const myRank=dash.rows.find(x=>x.user_id===user.id)?.rank||0;
+ const perf=blindPerformanceLabel(total);
+ const grapes=answerGrapes(a);
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>RÉVÉLATION</span></header>
- <div class="card hero"><div class=emoji>${ICON[rv.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p><div class=code>${Number(rv.price).toFixed(2)} €</div>
- <div class=scorebox><div class=scoreitem><span>Prix</span><b>${ps}/5</b></div><div class=scoreitem><span>Région</span><b>${rs}/3</b></div><div class=scoreitem><span>Cépages</span><b>${gs}/3</b></div></div>
- <h2 style="margin-top:18px">${total}/11 points</h2>${validated&&game.experience_mode==="challenge"&&parts.factor<1?`<div class=muted>Multiplicateur d’indices : ×${parts.factor}</div>`:""}${!validated?`<div class=notice>⚠️ Tu n’avais pas validé ta réponse avant la révélation : elle ne compte pas au classement.</div>`:myRank?`<div class=notice>Tu es actuellement <b>${myRank}${myRank===1?"er":"e"}</b> du classement général.</div>`:""}</div>
- <div class=card><h2>📊 Le groupe sur ce vin</h2><div class=reveal-summary>
-   <div class=stat><span>Prix estimé moyen</span><strong>${dash.group.count?dash.group.avgPrice.toFixed(2)+" €":"—"}</strong></div>
+ <div class="card blind-reveal-hero"><div class="blind-reveal-kicker">LE VIN ÉTAIT</div><div class="blind-reveal-icon">${ICON[rv.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p><div class="blind-reveal-realprice">${Number(rv.price).toFixed(2)} €</div></div>
+ ${validated?`<div class="card blind-score-drop"><div class="blind-score-head"><div><span>${perf.icon} ${perf.title}</span><h2>${total}<small>/11</small></h2></div><p>${perf.text}</p></div>
+   <div class="blind-point-stack">
+    ${blindPointLine("💰","Prix",parts.price,5,Number(a.price).toFixed(2)+" €",Number(rv.price).toFixed(2)+" €",80)}
+    ${blindPointLine("🗺️","Région",parts.region,3,regionLabel(a.region),regionLabel(rv.region),300)}
+    ${blindPointLine("🍇","Cépages",parts.grape,3,grapes.join(" / "),(rv.grapes||[]).join(" / "),520)}
+   </div>
+   ${momentum?.best?`<div class="blind-streak">🔥 <b>Streak !</b> ${esc(momentum.best.label)}</div>`:""}
+   ${momentum?.style?`<div class="blind-player-style"><span>${momentum.style.icon}</span><div><small>TON STYLE CE SOIR</small><b>${esc(momentum.style.title)}</b><p>${esc(momentum.style.text)}</p></div></div>`:""}
+   ${myRank?`<div class="blind-rank-callout">Classement général : <b>${myRank}${myRank===1?"er":"e"}</b> · ${dash.rows.length} joueur${dash.rows.length>1?"s":""}</div>`:""}
+ </div>`:`<div class=notice>⚠️ Tu n’avais pas verrouillé ton pronostic avant la révélation : cette manche ne compte pas au classement.</div>`}
+ <div class=card><h2>📊 Et le groupe ?</h2><div class=reveal-summary>
+   <div class=stat><span>Prix moyen joué</span><strong>${dash.group.count?dash.group.avgPrice.toFixed(2)+" €":"—"}</strong></div>
    <div class=stat><span>Prix réel</span><strong>${Number(rv.price).toFixed(2)} €</strong></div>
-   <div class=stat><span>Note plaisir moyenne</span><strong>${dash.group.count?dash.group.avgNote.toFixed(1)+"/10":"—"}</strong></div>
+   <div class=stat><span>Coup de cœur moyen</span><strong>${dash.group.count?dash.group.avgNote.toFixed(1)+"/10":"—"}</strong></div>
  </div></div>
- <div class=card><h2>🎖️ Récompenses du vin</h2>${awardCardsHtml(dash.awards)}</div>
- <div class=card><h2>🏁 Classement intermédiaire</h2>${rankingHtml(dash.rows)}<p class=muted style="margin-top:14px">L'organisateur lancera le vin suivant.</p></div>`;
+ <div class=card><h2>🏁 La course</h2>${rankingHtml(dash.rows)}<p class=muted style="margin-top:14px">L’organisateur lancera la prochaine manche.</p></div>`;
 }
 
 async function renderPlayerFinished(){
