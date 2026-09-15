@@ -1441,3 +1441,29 @@ body.blind-atlas-open{overflow:hidden}.blind-atlas-overlay{position:fixed;inset:
  .blind-map-region-index{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:430px){.blind-map-region-index{grid-template-columns:1fr 1fr}.blind-map-region-index button{font-size:.62rem;padding:6px}}
+
+.blind-france-coast{fill:none;stroke:#86626f;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;opacity:.88}
+.blind-map-region-index{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+.blind-map-region-index button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;font-weight:700;color:var(--text);cursor:pointer}
+.blind-grape-facts{grid-template-columns:1fr 1fr}
+.blind-grape-card .blind-atlas-block p{color:#594650}
+.blind-atlas-grid-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.blind-atlas-softbox{background:var(--surface-soft);border:1px solid rgba(111,36,61,.08);border-radius:14px;padding:12px;margin-top:12px}
+.blind-atlas-softbox>b{display:block;font-size:.8rem;margin-bottom:8px}
+.blind-hint-list{margin:0;padding-left:18px;display:grid;gap:7px}
+.blind-hint-list li{font-size:.78rem;line-height:1.5;color:#5a4953}
+.blind-hint-list.compact li{font-size:.76rem}
+@media(max-width:760px){.blind-atlas-grid-two{grid-template-columns:1fr}.blind-map-region-index{justify-content:flex-start;overflow:auto;padding-bottom:2px;flex-wrap:nowrap}.blind-map-region-index button{white-space:nowrap}}
+
+/* V4.1.5 — Atlas premium */
+.blind-atlas-content{background:linear-gradient(180deg,#fbfaf8 0%,#f6f1ed 100%)}
+.blind-map-shell{background:#fff;border:1px solid rgba(111,36,61,.11);border-radius:24px;padding:14px 14px 12px;box-shadow:0 18px 44px rgba(48,29,36,.08)}
+.blind-map-kicker{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 10px}.blind-map-kicker span{font-size:.62rem;font-weight:950;letter-spacing:.14em;color:var(--wine)}.blind-map-kicker small{font-size:.68rem;color:var(--muted);font-weight:750}
+.blind-france-map{aspect-ratio:600/520;width:min(100%,700px);max-height:none;overflow:visible}
+.blind-france-map svg{overflow:visible}.blind-france-shape,.blind-corsica{fill:url(#franceFill);stroke:#6f243d;stroke-width:3.2;stroke-linejoin:round}.blind-map-relief{fill:none;stroke:#c9b7bd;stroke-width:2;stroke-dasharray:5 7;opacity:.5}
+.blind-map-hotspot{width:18px;height:18px;padding:0;display:block;overflow:visible}.blind-map-dot{position:absolute;inset:2px;width:14px;height:14px;border:3px solid #fff;background:var(--wine);box-shadow:0 0 0 2px rgba(111,36,61,.18),0 5px 12px rgba(55,25,35,.18);transition:transform .15s ease,box-shadow .15s ease}.blind-map-hotspot b{position:absolute;left:50%;top:50%;transform:translate(var(--lx),var(--ly));font-size:.65rem;font-weight:900;line-height:1.05;background:rgba(255,255,255,.96);border:1px solid rgba(111,36,61,.13);padding:4px 6px;border-radius:8px;box-shadow:0 5px 14px rgba(48,29,36,.07);white-space:nowrap;pointer-events:none}.blind-map-hotspot:hover .blind-map-dot,.blind-map-hotspot:focus .blind-map-dot,.blind-map-hotspot.sel .blind-map-dot{transform:scale(1.32);box-shadow:0 0 0 4px rgba(111,36,61,.16),0 7px 18px rgba(55,25,35,.22)}.blind-map-hotspot:hover b,.blind-map-hotspot:focus b,.blind-map-hotspot.sel b{background:var(--wine);color:#fff;border-color:var(--wine);z-index:8}
+.blind-map-legend{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:10px 4px 0;color:var(--muted);font-size:.68rem}.blind-map-legend span:first-child{display:flex;align-items:center;gap:6px;font-weight:800;color:var(--text)}.blind-map-legend i{width:9px;height:9px;border-radius:50%;background:var(--wine);box-shadow:0 0 0 2px rgba(111,36,61,.15)}
+.blind-atlas-side .blind-atlas-card{border-color:rgba(111,36,61,.12);box-shadow:0 18px 40px rgba(48,29,36,.07)}.blind-atlas-card-head{background:linear-gradient(135deg,#fff,var(--wine-soft));margin:-18px -18px 12px;padding:16px 18px;border-radius:20px 20px 0 0}.blind-grape-card .blind-atlas-card-head{margin:-18px -18px 12px}.blind-atlas-card-head>span{filter:drop-shadow(0 4px 5px rgba(48,29,36,.12))}
+.blind-atlas-softbox{background:#fff;border:1px solid rgba(111,36,61,.1);box-shadow:0 8px 20px rgba(48,29,36,.035)}.blind-atlas-softbox>b{color:var(--wine)}.blind-hint-list li::marker{color:var(--wine)}
+@media(max-width:760px){.blind-map-shell{padding:11px 8px 10px;border-radius:18px}.blind-france-map{width:100%;margin:0 auto}.blind-map-hotspot b{display:none}.blind-map-hotspot.sel b{display:block;transform:translate(12px,-24px);font-size:.6rem;z-index:10}.blind-map-dot{width:13px;height:13px}.blind-map-legend{font-size:.62rem;align-items:flex-start}.blind-map-legend span:last-child{text-align:right}.blind-map-kicker{padding-inline:2px}.blind-atlas-card-head{margin:-14px -14px 12px;padding:14px;border-radius:16px 16px 0 0}.blind-grape-card .blind-atlas-card-head{margin:-14px -14px 12px}}
+@media(max-width:430px){.blind-map-kicker small{display:none}.blind-france-map{aspect-ratio:600/540}.blind-map-hotspot{width:17px;height:17px}.blind-map-legend{display:grid;grid-template-columns:auto 1fr}.blind-map-legend span:last-child{font-size:.58rem}.blind-atlas-disclaimer{font-size:.61rem;line-height:1.4}}
