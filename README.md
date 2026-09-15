@@ -1,241 +1,31 @@
-# Blind Wine V3.5.1 — Revue complète de cohérence
+# Blind Wine V3.8.1 — Fresh install
 
-Cette version succède à la V3.5.0 et peut être utilisée sur une installation neuve ou une base déjà existante.
+Ce ZIP est le build complet à utiliser si la V3.8.0 n'a jamais été installée.
 
-## Corrections importantes
-- `profiles` existe désormais avant la compilation de `create_game()` / `join_game()`.
-- `config.js` ne contient plus l'URL d'un ancien projet Supabase supprimé.
-- Le code `?game=ABCDE` est conservé à travers le Magic Link.
-- Score Challenge cohérent sur l'écran de révélation joueur (100 % / 75 % / 50 %).
-- Classement final avec égalités en classement de compétition.
-- Badges finaux compatibles avec les ex æquo.
-- Mini-quiz Découverte générique cohérent jusque dans les écrans de révélation.
-- Un joueur n'ayant pas validé son quiz n'est plus considéré comme ayant répondu correctement par conversion `null -> 0`.
-- Validation serveur et frontend des quiz personnalisés (2 à 4 choix + réponse valide).
-- Contraintes d'intégrité sur `quiz_options`.
-- Un vin / secret ne peut plus être déplacé accidentellement vers une autre partie ou position.
-- Correction du HTML des boutons d'arômes : les chaînes JSON n'endommagent plus les attributs `onclick`.
-- Cache PWA incrémenté.
+## 1. Supabase
+Dans le nouveau projet Supabase :
+1. Ouvre **SQL Editor**.
+2. Copie **tout** le contenu de `supabase.sql`.
+3. Exécute-le en une seule fois.
+4. Il n'y a **aucune migration V3.7 / V3.8 / V3.8.1 à exécuter séparément**.
 
-## Installation neuve
-1. Créer un nouveau projet Supabase.
-2. Exécuter `supabase.sql` en entier.
-3. Renseigner `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` dans `config.js`.
-4. Déployer tous les fichiers sur Vercel.
-5. Ajouter l'URL Vercel dans Supabase Authentication > URL Configuration.
-6. Tester les trois modes avec plusieurs comptes.
+Le script crée/alimente directement : tables, colonnes, contraintes, triggers, RLS, policies, RPC, grants, profils et Realtime.
 
+## 2. Configuration frontend
+Conserve/renseigne dans `config.js` uniquement :
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
 
-## Mise à jour depuis V3.5.0
-1. Sauvegarder par précaution les données importantes.
-2. Exécuter le `supabase.sql` V3.5.1 en entier dans Supabase SQL Editor. Le bloc de migration legacy a été rendu idempotent et ne réécrase plus `wine_secrets`.
-3. Remplacer `index.html`, `sw.js`, `manifest.webmanifest` et `README.md` sur GitHub.
-4. Conserver le `config.js` déjà configuré avec ton URL et ta Publishable Key Supabase.
-5. Laisser Vercel redéployer puis faire un rechargement forcé du navigateur.
+N'utilise jamais une service-role key dans le navigateur.
 
-## Limite
-Validation statique approfondie effectuée. Pas de vrai test E2E contre ton projet Supabase réel.
+## 3. GitHub / Vercel
+Décompresse le ZIP puis envoie **les fichiers extraits et le dossier `js/`**, pas le ZIP lui-même.
 
-## V3.4.6 — Correctif page blanche
-- Corrige `Identifier 'supabase' has already been declared`.
-- Le SDK CDN possède déjà le global `window.supabase`.
-- L'état applicatif utilise désormais `supabaseClient`, sans collision de nom.
+Si ton dépôt contient déjà Blind Wine, remplace le contenu par ce build mais garde ton `config.js` de production si ses valeurs sont déjà correctes.
 
-## V3.4.7 — Sélection obligatoire du mode
-- Nouveau parcours organisateur en 2 étapes.
-- Étape 1 : choix explicite entre À l'aveugle / Découverte / Challenge.
-- Aucun mode par défaut silencieux : impossible de créer une partie sans sélection.
-- Étape 2 : configuration des bouteilles.
-- Le mode choisi est rappelé clairement dans le lobby organisateur.
+Vercel redéploiera automatiquement depuis GitHub.
 
-## V3.4.8 — Trois modes réellement distincts
+Après le déploiement, fais une actualisation forcée (`Ctrl+F5`) ou ferme/réouvre la PWA sur iPhone.
 
-### 🎯 À l'aveugle
-- Aucun indice.
-- Fiche de dégustation + prix/région/cépages.
-- Révélation classique.
-- Classement sommelier et badges de précision.
-
-### 🎓 Découverte
-- Vin connu dès le départ.
-- Parcours Œil → Nez → Bouche → Comprendre.
-- Mini-quiz et explications pédagogiques.
-- Aucun podium de connaissance ; bilan collectif et apprentissage.
-
-### 🥂 Challenge
-- Expérience séparée de Blind.
-- Indices progressifs et score potentiel visible.
-- 0 indice = x1 ; 1 indice = x0,75 ; 2 indices = x0,50.
-- Révélation dédiée Brut → Indices → Multiplicateur → Final.
-- Classement final dédié à la prise de risque, avec badges Champion du risque / Sans filet / Stratège.
-
-## V3.4.9 — Navigation Accueil / reprise de partie
-- Ajoute un bouton Accueil flottant pendant une partie.
-- Revenir à l'accueil ne supprime ni la session ni la partie.
-- L'accueil affiche une carte "Partie en cours" avec bouton de reprise.
-- Fonctionne pour organisateur et joueur, dans les 3 modes.
-- La restauration automatique de session reste active après rechargement du navigateur.
-
-## V3.5.0 — Suppression d'une partie
-- L'organisateur peut supprimer une partie depuis la carte "Partie en cours" sur l'accueil.
-- Confirmation obligatoire avant suppression.
-- Suppression sécurisée via RPC Supabase `delete_game(uuid)`.
-- Seul le host authentifié peut supprimer la partie.
-- La session locale est nettoyée après suppression.
-
-
-## V3.5.1 — Revue complète de cohérence
-- Migration SQL rendue réellement réexécutable : les anciennes colonnes vides de `wines` ne peuvent plus écraser `wine_secrets`.
-- Séparation serveur des champs Blind / Discovery / Challenge dans `guard_answer_write()`.
-- Challenge : 2 indices obligatoires par bouteille côté client et côté SQL.
-- Challenge : correction du score brut (il n'est plus déjà pénalisé).
-- Challenge : explication pédagogique affichée après révélation.
-- Blind et Challenge : suppression de l'aide gratuite régions/cépages ; le Blind redevient zéro indice et le Challenge réserve l'aide aux indices pénalisants.
-- Découverte : correction de l'option de quiz affichée à tort comme sélectionnée lorsque `quiz_correct` vaut NULL.
-- Realtime : les validations joueurs rafraîchissent à nouveau correctement l'écran hôte spécifique au mode.
-- Navigation : les événements Realtime ne forcent plus le retour dans la partie quand l'utilisateur est sur Accueil / Profil / Création.
-- Suppression distante d'une partie : nettoyage propre de la session si la partie disparaît.
-- `config.js` manquant ne provoque plus un écran blanc ; message de configuration à la place.
-- Nettoyage de la référence résiduelle `supabase` après renommage en `supabaseClient`.
-- Statistiques Challenge et Découverte rendues plus spécifiques au mode.
-- PWA : `config.js` ajouté au shell de cache, cache versionné V3.5.1.
-
-- `create_game` exige désormais explicitement `experience_mode` côté serveur : plus aucun mode Blind implicite.
-- Mini-quiz Découverte normalisé : un quiz personnalisé est utilisé uniquement s'il est complet ; sinon question/options/correction/explication de fallback restent cohérentes ensemble.
-
-- Cycle de vie de session clarifié : une partie terminée n'est plus libellée « en cours ».
-- Nouveau bouton « Fermer/Quitter cette session » : retire seulement le raccourci local et conserve toutes les données/historique.
-- La suppression serveur reste réservée à l'organisateur et aux parties non terminées depuis la carte d'accueil.
-
-- Scoring région réaligné sur la règle produit : exact = 3, vraie relation parent/enfant = 2, proximité géographique non exacte = 1. Les appellations sœurs ne reçoivent plus 2 points.
-- Alias cépages complétés : Shiraz↔Syrah, Monastrell↔Mourvèdre, Rolle↔Vermentino, y compris lorsqu'un ancien enregistrement contient seulement l'un des alias.
-
-- Nettoyage de deux helpers frontend devenus inutilisés (`makeCode`, `selectedValues`).
-
-## V3.5.2 — Recherche dans les sélecteurs
-- Recherche instantanée, insensible aux accents et à la casse.
-- Cépages : recherche disponible pour l'organisateur et les joueurs, tout en conservant le multi-sélection.
-- Région / appellation : remplacement du long select natif par un picker recherchable.
-- Les chemins de régions sont visibles (ex. appellation · région · pays) pour éviter les ambiguïtés.
-- Optimisé mobile : liste scrollable, champ de recherche sticky, bouton d'effacement.
-- Les arômes restent volontairement sous forme de chips visuelles pour préserver l'expérience sensorielle.
-
-## V3.5.3 — Correctif recherche
-- Corrige le contraste des sélecteurs recherchables : fond blanc, texte lisible et cohérent avec le thème de l'app.
-- Corrige le filtrage dynamique : les résultats masqués le sont réellement même avec les styles flex/grid.
-- Recherche déclenchée à chaque frappe via `input`, avec fallback `addEventListener`.
-- Recherche insensible à la casse et aux accents : `rhone`, `Rhône` et `RHÔNE` correspondent.
-- Normalisation supplémentaire des apostrophes, tirets et ponctuation pour améliorer les recherches.
-
-## V3.5.4 — Correctif `join_game`
-- Corrige l'erreur PostgreSQL `column reference "game_id" is ambiguous` lors de l'arrivée d'un joueur.
-- Cause : `game_id` est à la fois une colonne de sortie de `RETURNS TABLE` et une colonne de `players`.
-- `ON CONFLICT (game_id,user_id)` est remplacé par `ON CONFLICT ON CONSTRAINT players_game_id_user_id_key`.
-- Aucun changement d'API frontend.
-
-## V3.5.5 — Contrôles joueur + aide régions/cépages
-- Les boutons de la fiche joueur donnent désormais un retour visuel immédiat après chaque clic.
-- Intensités, arômes et note plaisir se sélectionnent sans attendre un rerender ou une réponse Realtime.
-- Renforcement tactile mobile avec `touch-action: manipulation`.
-- Ajout d'un mémo repliable « cépages par grandes régions » dans Blind et Challenge.
-- Le mémo possède sa propre recherche insensible aux accents/casse grâce à la normalisation existante.
-- Données volontairement indicatives : les cépages affichés sont les principaux cépages usuels, pas une règle exhaustive.
-
-## V3.5.6 — Revue complète de code
-- Sérialise les écritures de réponses : les clics rapides ne peuvent plus écraser la dernière sélection avec une requête plus ancienne.
-- Corrige le vrai état `disabled` du bouton final en mode Découverte.
-- Ajoute un rollback visuel sur les sélecteurs région/cépages si Supabase refuse une écriture.
-- Nettoie les files d’écriture lors de la fermeture/changement de session.
-- Revalide les RPC frontend ↔ SQL, les handlers HTML, les fonctions SQL et la syntaxe JavaScript.
-
-## V3.5.7 — Courbe de progression personnelle
-- Ajoute une courbe de progression dans le profil/historique.
-- Un point = une dégustation compétitive terminée (Blind ou Challenge).
-- Métrique comparable : points obtenus / maximum théorique de la soirée.
-- Les vins non répondus comptent comme 0 dans le maximum possible.
-- Affiche record personnel, tendance premières vs dernières dégustations et pourcentage dans chaque ligne d'historique.
-- Le mode Découverte est exclu de la courbe car il n'utilise pas le même scoring compétitif.
-
-## V3.5.8 — Fiche joueur mobile-first
-- Layout dédié à la fiche de dégustation joueur.
-- Note /10 affichée en 2 lignes de 5 boutons sur mobile pour éviter l’écrasement.
-- Prix, région et cépages empilés verticalement sur petit écran.
-- Sélecteurs ouverts placés au-dessus de l’action sticky pour éviter les chevauchements.
-- Bouton de validation sticky plus compact et mieux isolé.
-- Blocs Challenge, guide cépages/régions et parcours Découverte rendus responsives.
-- Gestion spécifique des écrans 360–430 px.
-
-## V3.5.9 — Revue code + UX
-### Correctifs code
-- `submitAnswer()` attend désormais toutes les écritures de réponse en cours avant de verrouiller la fiche.
-- La validation vérifie qu'une ligne a réellement été verrouillée.
-- Correction de la tendance historique pour 2–5 dégustations.
-- Les statistiques de progression excluent les soirées organisées et les parties encore en cours.
-- Les boutons explicites utilisent `type="button"` pour éviter de futurs effets de soumission implicite.
-
-### Correctifs UX
-- Le bouton flottant Accueil ne recouvre plus le bouton sticky de validation.
-- Les pickers restent au-dessus des actions flottantes.
-- Clarification : le mémo régions/cépages est une référence générale, pas un indice spécifique à la bouteille.
-- Meilleure gestion du header sur petits écrans.
-- Focus clavier visible.
-- La courbe d'historique s'élargit avec le nombre de dégustations pour rester lisible.
-
-
-## V3.6.0 — Branding / icônes
-- Nouvelle icône Blind Wine intégrée au navigateur et à la PWA.
-- `favicon-32.png` pour l’onglet navigateur.
-- `apple-touch-icon.png` pour iPhone/iPad.
-- `icon-192.png` et `icon-512.png` pour la web app installée.
-- `og-preview.jpg` pour les aperçus de partage/liens.
-
-
-## V3.6.1 — Refactor frontend
-Le gros `index.html` a été séparé sans changement de schéma Supabase.
-
-### Architecture
-- `index.html` — shell HTML et dépendances
-- `styles.css` — styles et responsive
-- `js/core.js` — état partagé, catalogues, scoring, pickers
-- `js/auth.js` — Auth / profil
-- `js/game.js` — session, navigation, création/join, Realtime
-- `js/discovery.js` — mode Découverte
-- `js/challenge.js` — mode Challenge
-- `js/player.js` — fiche joueur / réponses
-- `js/reveal.js` — reveal et helpers de classement
-- `js/host.js` — lobby/configuration/contrôle hôte
-- `js/history.js` — historique / progression
-- `js/main.js` — bootstrap, réseau, service worker
-
-Les scripts restent des scripts classiques chargés explicitement, afin de conserver les handlers HTML globaux et de minimiser le risque de régression pendant cette étape de refactor.
-
-
-## V3.6.2 — Audit post-refactor
-- Corrige un double bootstrap dans `js/main.js`.
-- Revalide dépendances, handlers, RPC, RLS, assets, PWA et scoring.
-- Ajoute scroll horizontal des tableaux sur mobile.
-- Renforce l'accessibilité de la bannière réseau.
-- Rend les métadonnées Open Graph plus fiables avec URL absolue.
-- Aucun changement SQL.
-
-
-## V3.6.3 — Configuration mini-quiz Découverte
-- Remplace le choix abstrait « Réponse 1 / 2 / 3 / 4 » par le texte réel des réponses.
-- La liste « Quelle est la bonne réponse ? » se met à jour pendant la saisie.
-- Le choix est désactivé tant qu'il n'y a pas au moins 2 propositions.
-- Si une réponse supprimée était la bonne, `quiz_correct` est remis à vide pour éviter une configuration incohérente.
-
-## V3.6.4 — Parcours pédagogiques Découverte
-- Chaque bouteille Découverte doit maintenant avoir un objectif pédagogique clair.
-- 12 objectifs prêts à l’emploi : couleur/évolution, arômes, acidité, tanins, sucre, corps, longueur, cépage, région, terroir, élevage en fût, âge.
-- Le choix d’un objectif préremplit le parcours pédagogique et le mini-quiz, sans modifier l’identité du vin.
-- Tous les textes restent modifiables par le caviste.
-- Le joueur voit un focus pédagogique au moment pertinent du parcours.
-- Aucun changement SQL.
-
-
-## V3.6.5 — Correctif de déploiement/cache
-- Conserve tous les changements Découverte de la V3.6.4.
-- Le Service Worker charge maintenant JS/CSS en network-first afin qu'un nouveau déploiement soit visible immédiatement après actualisation.
-- Fichiers Découverte réellement modifiés par la V3.6.4 : `js/host.js`, `js/discovery.js`, `styles.css`, `sw.js`.
-- Build marker : 3.6.5.
+## Version
+Frontend + SQL : **V3.8.1 Fresh Install**.

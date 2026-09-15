@@ -6,7 +6,7 @@ async function restoreSession(){
  try{saved=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
  if(!saved?.gameId)return false;
  const g=await supabaseClient.from("games")
-   .select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at")
+   .select("id,code,status,current,phase,wine_count,host_id,experience_mode,discovery_theme,discovery_theme_goal,created_at")
    .eq("id",saved.gameId).maybeSingle();
  if(g.error||!g.data){clearSession();return false}
  game=g.data;wineCache=null;answerCache.clear();
@@ -168,7 +168,7 @@ async function createGame(){
  if(r.error)return toast(r.error.message);
  const row=Array.isArray(r.data)?r.data[0]:r.data;
  if(!row)return toast("Impossible de créer la partie.");
- game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind'};
+ game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind',discovery_theme:row.discovery_theme||'',discovery_theme_goal:row.discovery_theme_goal||''};
  wineCache=null;answerCache.clear();
  role="host";player=null;saveSession();subscribe();route();
 }
@@ -181,7 +181,7 @@ async function joinGame(){
  if(r.error)return toast(r.error.message);
  const row=Array.isArray(r.data)?r.data[0]:r.data;
  if(!row)return toast("Partie introuvable.");
- game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind'};
+ game={id:row.game_id,code:row.code,status:row.status,current:row.current,phase:row.phase,wine_count:row.wine_count,host_id:row.host_id,experience_mode:row.experience_mode||'blind',discovery_theme:row.discovery_theme||'',discovery_theme_goal:row.discovery_theme_goal||''};
  wineCache=null;answerCache.clear();
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
@@ -217,13 +217,16 @@ async function handlePlayersChange(){
 
 async function handleAnswerRealtime(payload){
  if(role!=="host"||game?.status!=="tasting"||game?.phase!=="answering")return;
+ // Découverte est un mode d’animation : le caviste doit voir évoluer les perceptions
+ // et comparaisons pendant le verre, pas uniquement au moment de la validation finale.
+ if(game.experience_mode==="discovery")return requestRoute();
  if(payload?.new?.done!==true&&payload?.old?.done!==true)return;
  requestRoute();
 }
 
 async function refreshGame(){
  if(!game)return false;
- const r=await supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,created_at").eq("id",game.id).maybeSingle();
+ const r=await supabaseClient.from("games").select("id,code,status,current,phase,wine_count,host_id,experience_mode,discovery_theme,discovery_theme_goal,created_at").eq("id",game.id).maybeSingle();
  if(r.error){toast(r.error.message);return false}
  if(!r.data){
    clearSession();

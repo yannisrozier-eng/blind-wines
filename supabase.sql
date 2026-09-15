@@ -1,6 +1,8 @@
--- BLIND WINE V3.5.1 COHERENCE AUDIT
--- À exécuter dans Supabase > SQL Editor.
--- Ce script migre une base V2.x existante et renforce le multi-joueur + la confidentialité.
+-- BLIND WINE V3.8.1 — FRESH INSTALL / SCHÉMA COMPLET
+-- À exécuter UNE SEULE FOIS dans Supabase > SQL Editor sur le nouveau projet.
+-- Ce fichier contient directement le schéma complet, les contraintes, triggers, RLS,
+-- RPC, droits et ajouts Découverte V3.7/V3.8/V3.8.1. Aucune migration intermédiaire requise.
+-- Le script reste volontairement idempotent sur les créations/ajouts principaux afin de faciliter un réalignement.
 
 create extension if not exists pgcrypto;
 
@@ -16,6 +18,8 @@ create table if not exists public.games (
 alter table public.games add column if not exists phase text not null default 'answering';
 alter table public.games add column if not exists wine_count integer not null default 9;
 alter table public.games add column if not exists experience_mode text not null default 'blind';
+alter table public.games add column if not exists discovery_theme text not null default '';
+alter table public.games add column if not exists discovery_theme_goal text not null default '';
 alter table public.games drop constraint if exists games_experience_mode_check;
 alter table public.games add constraint games_experience_mode_check check (experience_mode in ('blind','discovery','challenge'));
 alter table public.games drop column if exists host_token;
@@ -100,6 +104,9 @@ alter table public.answers add column if not exists grapes text[] not null defau
 alter table public.answers add column if not exists hint_level integer not null default 0;
 alter table public.answers add column if not exists discovery_step integer not null default 0;
 alter table public.answers add column if not exists quiz_choice integer;
+alter table public.answers add column if not exists discovery_compare jsonb not null default '{}'::jsonb;
+alter table public.answers drop constraint if exists answers_discovery_compare_check;
+alter table public.answers add constraint answers_discovery_compare_check check (jsonb_typeof(discovery_compare)='object');
 alter table public.answers drop constraint if exists answers_discovery_step_check;
 alter table public.answers add constraint answers_discovery_step_check check (discovery_step between 0 and 4);
 alter table public.answers drop constraint if exists answers_quiz_choice_check;
@@ -196,7 +203,7 @@ $$;
 drop function if exists public.create_game(integer);
 drop function if exists public.create_game(integer,text);
 create function public.create_game(p_wine_count integer, p_experience_mode text)
-returns table(game_id uuid, code text, status text, current integer, phase text, wine_count integer, host_id uuid, experience_mode text)
+returns table(game_id uuid, code text, status text, current integer, phase text, wine_count integer, host_id uuid, experience_mode text, discovery_theme text, discovery_theme_goal text)
 language plpgsql
 security definer
 set search_path=public
@@ -245,7 +252,7 @@ begin
   end loop;
 
   return query
-  select gid,gcode,'lobby'::text,0,'answering'::text,p_wine_count,auth.uid(),p_experience_mode;
+  select gid,gcode,'lobby'::text,0,'answering'::text,p_wine_count,auth.uid(),p_experience_mode,''::text,''::text;
 end;
 $$;
 
@@ -256,7 +263,7 @@ grant execute on function public.create_game(integer,text) to authenticated;
 -- Le DROP est nécessaire en migration V2.7 -> V2.8 car le type de retour gagne wine_count.
 drop function if exists public.join_game(text,text);
 create function public.join_game(p_code text,p_name text)
-returns table(game_id uuid, code text, status text, current integer, phase text, wine_count integer, host_id uuid, experience_mode text)
+returns table(game_id uuid, code text, status text, current integer, phase text, wine_count integer, host_id uuid, experience_mode text, discovery_theme text, discovery_theme_goal text)
 language plpgsql
 security definer
 set search_path=public
@@ -298,7 +305,7 @@ begin
   on conflict on constraint players_game_id_user_id_key
   do update set name=excluded.name;
 
-  return query select g.id,g.code,g.status,g.current,g.phase,g.wine_count,g.host_id,g.experience_mode;
+  return query select g.id,g.code,g.status,g.current,g.phase,g.wine_count,g.host_id,g.experience_mode,g.discovery_theme,g.discovery_theme_goal;
 end;
 $$;
 
@@ -416,6 +423,25 @@ with check (public.is_game_host(game_id) and public.is_game_lobby(game_id));
 create policy wine_reveals_select on public.wine_reveals for select to authenticated
 using (public.is_game_host(game_id) or public.is_game_member(game_id));
 
+create or replace function public.set_discovery_setup(p_game_id uuid,p_theme text,p_goal text)
+returns void
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare g public.games%rowtype;
+begin
+  select * into g from public.games where id=p_game_id for update;
+  if g.id is null then raise exception 'Partie introuvable.'; end if;
+  if g.host_id<>auth.uid() then raise exception 'Action réservée à l’organisateur.'; end if;
+  if g.status<>'lobby' or g.experience_mode<>'discovery' then raise exception 'Le fil rouge ne peut être modifié que dans le lobby Découverte.'; end if;
+  if char_length(coalesce(p_theme,''))>80 or char_length(coalesce(p_goal,''))>500 then raise exception 'Texte trop long.'; end if;
+  update public.games set discovery_theme=btrim(coalesce(p_theme,'')),discovery_theme_goal=btrim(coalesce(p_goal,'')) where id=p_game_id;
+end;
+$$;
+revoke all on function public.set_discovery_setup(uuid,text,text) from public;
+grant execute on function public.set_discovery_setup(uuid,text,text) to authenticated;
+
 create or replace function public.start_game(p_game_id uuid)
 returns void
 language plpgsql
@@ -427,6 +453,7 @@ declare
   total_wines integer;
   incomplete integer;
   bad_quiz integer;
+  bad_goals integer;
   bad_hints integer;
 begin
   select * into g from public.games where id=p_game_id for update;
@@ -451,6 +478,15 @@ begin
   if incomplete>0 then raise exception 'Complète toutes les bouteilles avant de lancer.'; end if;
 
   if g.experience_mode='discovery' then
+    if btrim(coalesce(g.discovery_theme,''))='' then
+      raise exception 'Choisis le fil rouge de la soirée Découverte.';
+    end if;
+    if btrim(coalesce(g.discovery_theme_goal,''))='' then
+      raise exception 'Précise ce que les participants doivent retenir à la fin de la soirée.';
+    end if;
+    select count(*) into bad_goals from public.wine_secrets s where s.game_id=p_game_id and btrim(s.learning_goal)='';
+    if bad_goals>0 then raise exception 'Chaque vin Découverte doit avoir un objectif pédagogique.'; end if;
+
     select count(*) into bad_quiz
     from public.wine_secrets s
     where s.game_id=p_game_id
@@ -605,6 +641,7 @@ set search_path=public
 as $$
 declare
   gmode text;
+  wpos integer;
 begin
   if tg_op='UPDATE' then
     if old.done then raise exception 'Cette réponse est verrouillée.'; end if;
@@ -619,23 +656,31 @@ begin
     end if;
   end if;
 
-  select experience_mode into gmode from public.games where id=new.game_id;
-  if gmode is null then
-    raise exception 'Partie introuvable.';
+  select g.experience_mode,w.position into gmode,wpos
+  from public.games g
+  join public.wines w on w.game_id=g.id
+  where g.id=new.game_id and w.id=new.wine_id;
+  if gmode is null or wpos is null then
+    raise exception 'Partie ou vin introuvable.';
   end if;
 
   -- Cohérence forte entre les trois expériences : les champs propres à un mode
   -- ne peuvent pas être injectés dans un autre mode via l'API REST.
   if gmode='blind' then
-    if new.hint_level<>0 or new.quiz_choice is not null or new.discovery_step<>0 then
+    if new.hint_level<>0 or new.quiz_choice is not null or new.discovery_step<>0 or new.discovery_compare<>'{}'::jsonb then
       raise exception 'Champs incompatibles avec le mode À l’aveugle.';
     end if;
   elsif gmode='challenge' then
-    if new.quiz_choice is not null or new.discovery_step<>0 then
+    if new.quiz_choice is not null or new.discovery_step<>0 or new.discovery_compare<>'{}'::jsonb then
       raise exception 'Champs incompatibles avec le mode Challenge.';
     end if;
   elsif gmode='discovery' then
     if new.hint_level<>0
+       or (new.discovery_compare ? 'choice' and not (new.discovery_compare->>'choice' in ('previous','current','similar')))
+       or (new.discovery_compare ? 'metric' and not (new.discovery_compare->>'metric' in ('look','nose','acid','sweet','body','finish')))
+       or (new.discovery_compare<>'{}'::jsonb and not (new.discovery_compare ? 'choice' and new.discovery_compare ? 'metric'))
+       or (new.discovery_compare - 'choice' - 'metric')<>'{}'::jsonb
+       or (wpos=0 and new.discovery_compare<>'{}'::jsonb)
        or new.price is not null
        or btrim(coalesce(new.region,''))<>''
        or coalesce(array_length(new.grapes,1),0)<>0
@@ -650,6 +695,9 @@ begin
     end if;
     if gmode='discovery' then
       if new.quiz_choice is null then raise exception 'Réponds au mini-quiz avant de terminer.'; end if;
+      if wpos>0 and not (new.discovery_compare ? 'choice' and new.discovery_compare ? 'metric') then
+        raise exception 'Compare ce vin avec le précédent avant de terminer.';
+      end if;
     else
       if new.price is null or new.price<=0 or btrim(new.region)='' or coalesce(array_length(new.grapes,1),0)=0 then
         raise exception 'Réponse incomplète.';

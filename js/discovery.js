@@ -17,6 +17,88 @@ const DISCOVERY_GOALS=[
  {id:'age',icon:'🕰️',label:'Comprendre l’effet de l’âge',short:'Observer comment les arômes, la couleur et la structure évoluent avec le temps.',eye_tip:'Cherche des nuances d’évolution dans la robe et compare-les au style attendu du vin, sans utiliser la couleur comme seul critère.',nose_tip:'Repère si les arômes semblent très frais et primaires ou s’ils évoluent vers des notes plus complexes, séchées, épicées ou tertiaires.',palate_tip:'Observe si les tanins et l’acidité paraissent intégrés et comment la texture a évolué. L’âge transforme l’équilibre, pas seulement les arômes.',learning_note:'Avec le temps, le vin évolue : les arômes changent, la texture peut s’assouplir et la couleur se transforme. Tous les vins ne vieillissent cependant pas de la même manière.',question:'Que peut modifier le vieillissement d’un vin ?',options:['Les arômes, la texture et la couleur','Uniquement le prix','Uniquement le degré d’alcool','Uniquement la forme de la bouteille'],correct:0,explanation:'L’évolution peut toucher plusieurs dimensions du vin : profil aromatique, couleur, intégration des tanins et équilibre général.'}
 ];
 
+
+
+const DISCOVERY_THEMES=[
+ {id:'initiation',icon:'🍷',label:'Initiation au vin',desc:'Construire les bases : observer, sentir, goûter et mettre des mots sur ses sensations.',sequence:['visual','aromas','acidity','tannins','body','length']},
+ {id:'grapes',icon:'🍇',label:'Découvrir les cépages',desc:'Comparer les profils aromatiques et les structures pour créer des repères de cépages.',sequence:['grape','aromas','acidity','body','grape','length']},
+ {id:'regions',icon:'🗺️',label:'Découvrir une région',desc:'Relier climat, terroir, cépages et style à travers plusieurs bouteilles.',sequence:['region','terroir','grape','acidity','body','region']},
+ {id:'comparison',icon:'⚖️',label:'Comparer des styles de vins',desc:'Apprendre par contraste : fraîcheur, intensité, corps, douceur et longueur.',sequence:['acidity','body','aromas','sweetness','length','tannins']},
+ {id:'oak_age',icon:'🪵',label:'Élevage & évolution',desc:'Comprendre l’effet du bois, du temps et de l’évolution sur les arômes et la texture.',sequence:['visual','oak','aromas','age','body','length']},
+ {id:'custom',icon:'✍️',label:'Parcours personnalisé',desc:'Construire librement le fil rouge de la soirée.',sequence:[]}
+];
+
+function discoveryThemePreset(value){
+ const v=String(value||'').trim();
+ return DISCOVERY_THEMES.find(t=>t.id===v||t.label===v)||null;
+}
+function discoveryThemeOptionsHtml(current){
+ const id=discoveryThemePreset(current)?.id||'';
+ return `<option value="">Choisir un thème de soirée…</option>`+DISCOVERY_THEMES.map(t=>`<option value="${t.id}" ${id===t.id?'selected':''}>${t.icon} ${esc(t.label)}</option>`).join('');
+}
+function discoveryThemeSummary(){
+ if(game?.experience_mode!=="discovery")return '';
+ const p=discoveryThemePreset(game.discovery_theme);
+ const label=p?.label||game.discovery_theme||'Parcours Découverte';
+ const goal=String(game.discovery_theme_goal||'').trim();
+ return `<div class="discovery-theme-banner"><span class="pill">${p?.icon||'🎓'} FIL ROUGE</span><b>${esc(label)}</b>${goal?`<small>${esc(goal)}</small>`:''}</div>`;
+}
+function discoverySuggestedGoal(theme,index){
+ const p=discoveryThemePreset(theme);
+ if(!p?.sequence?.length)return null;
+ return p.sequence[index%p.sequence.length]||null;
+}
+function discoveryComparisonSpec(d){
+ const goal=discoveryGoalPreset(d?.learning_goal);
+ const map={
+   visual:{key:'look',icon:'👁️',label:'intense visuellement'},
+   aromas:{key:'nose',icon:'👃',label:'intense aromatiquement'},
+   acidity:{key:'acid',icon:'🍋',label:'acide / vif'},
+   sweetness:{key:'sweet',icon:'🍯',label:'doux / sucré'},
+   body:{key:'body',icon:'💪',label:'ample / puissant'},
+   length:{key:'finish',icon:'⏱️',label:'long en bouche'},
+   tannins:{key:'body',icon:'🌵',label:'structuré en bouche'},
+   grape:{key:'nose',icon:'🍇',label:'expressif aromatiquement'},
+   region:{key:'acid',icon:'🗺️',label:'frais / tendu'},
+   terroir:{key:'acid',icon:'🌱',label:'frais / tendu'},
+   oak:{key:'body',icon:'🪵',label:'ample / marqué par la matière'},
+   age:{key:'nose',icon:'🕰️',label:'évolué aromatiquement'}
+ };
+ return map[goal?.id]||{key:'body',icon:'⚖️',label:'ample en bouche'};
+}
+function discoveryCompareChoiceLabel(choice){
+ return {previous:'Vin précédent',current:'Ce vin',similar:'Très proches'}[choice]||'—';
+}
+function discoveryComparisonDistributionHtml(rows,d){
+ const choices=(rows||[]).map(a=>a.discovery_compare?.choice).filter(x=>['previous','current','similar'].includes(x));
+ if(!choices.length)return '<p class="muted">Aucune comparaison enregistrée.</p>';
+ const counts={previous:0,current:0,similar:0};choices.forEach(x=>counts[x]++);
+ const total=choices.length,spec=discoveryComparisonSpec(d||{});
+ const items=[['previous','Vin précédent'],['similar','Très proches'],['current','Ce vin']];
+ return `<div class="comparison-result"><p><b>${spec.icon} Lequel paraît le plus ${esc(spec.label)} ?</b></p>${items.map(([k,l])=>`<div class="comparison-result-row"><span>${l}</span><div><i style="width:${Math.round(counts[k]/total*100)}%"></i></div><b>${Math.round(counts[k]/total*100)}%</b></div>`).join('')}<small class="muted">${total} comparaison${total>1?'s':''} · perception collective, pas correction.</small></div>`;
+}
+
+function discoveryProgressSummary(answers,reveals,wines=[]){
+ const revealByWine=new Map((reveals||[]).map(r=>[r.wine_id,r]));
+ const orderByWine=new Map((wines||[]).map((w,i)=>[w.id,Number.isInteger(w.position)?w.position:i]));
+ const rows=(answers||[]).filter(a=>a.done&&revealByWine.has(a.wine_id)).map(a=>{
+   const rv=revealByWine.get(a.wine_id), ed=discoveryDefaults(rv);
+   return {a,rv,goal:discoveryGoalPreset(rv.learning_goal),ok:Number.isInteger(a.quiz_choice)&&Number(a.quiz_choice)===ed.correct};
+ }).sort((x,y)=>(orderByWine.get(x.a.wine_id)??Number.MAX_SAFE_INTEGER)-(orderByWine.get(y.a.wine_id)??Number.MAX_SAFE_INTEGER));
+ const byGoal=new Map();
+ rows.forEach(r=>{
+   const key=r.goal?.id||r.rv.learning_goal||'general';
+   if(!byGoal.has(key))byGoal.set(key,{label:r.goal?.label||r.rv.learning_goal||'Compréhension générale',icon:r.goal?.icon||'🎓',ok:0,total:0});
+   const x=byGoal.get(key);x.total++;if(r.ok)x.ok++;
+ });
+ const notions=[...byGoal.values()].map(x=>({...x,rate:x.total?x.ok/x.total:0}));
+ const half=Math.ceil(rows.length/2);
+ const first=rows.slice(0,half),last=rows.slice(half);
+ const rate=list=>list.length?Math.round(list.filter(x=>x.ok).length/list.length*100):null;
+ const firstRate=rate(first), lastRate=rate(last.length?last:first);
+ return {rows,notions,correct:rows.filter(x=>x.ok).length,total:rows.length,firstRate,lastRate,delta:(firstRate!=null&&lastRate!=null)?lastRate-firstRate:null,comparisons:rows.filter(x=>x.a.discovery_compare?.choice).length};
+}
+
 function discoveryGoalPreset(value){
  const v=String(value||'').trim();
  return DISCOVERY_GOALS.find(g=>g.id===v||g.label===v)||null;
@@ -100,15 +182,28 @@ function discoveryQuestionType(type,title,text){
  const meta={perception:['💭','PERCEPTION'],observation:['👀','OBSERVATION'],knowledge:['🧠','CONNAISSANCE']}[type]||['🎓','DÉCOUVERTE'];
  return `<div class="discovery-question-type ${type}"><span>${meta[0]} ${meta[1]}</span><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
 }
-function discoveryComparisonHtml(current,previous){
+function discoveryComparisonHtml(current,previous,d=null,wineId=null,interactive=false){
  if(!previous)return '';
- const rows=[['🍋 Acidité','acid'],['💪 Corps','body'],['⏱️ Longueur','finish']].map(([label,key])=>{
-   const a=Number(current.scores?.[key]||0),b=Number(previous.scores?.[key]||0);
-   if(!a||!b)return '';
-   const verdict=a===b?'≈ identique':a>b?'↑ plus marqué':'↓ moins marqué';
-   return `<div class="row"><span>${label}</span><b>${verdict}</b><small>Vin précédent ${b}/5 → ce vin ${a}/5</small></div>`;
- }).join('');
- return rows?`<div class="learning-card discovery-compare"><b>⚖️ Compare avec le vin précédent</b><p class="muted">La comparaison aide ton palais à créer des repères.</p>${rows}</div>`:'';
+ const spec=discoveryComparisonSpec(d||{});
+ const a=Number(current.scores?.[spec.key]||0),b=Number(previous.scores?.[spec.key]||0);
+ const saved=current.discovery_compare||{};
+ const choice=saved.choice||'';
+ const verdict=a&&b?(a===b?'≈ tes notes sont identiques':a>b?'↑ tu as noté ce vin plus haut':'↓ tu as noté ce vin plus bas'):'';
+ if(interactive&&wineId){
+   return `<div class="learning-card discovery-compare advanced"><b>${spec.icon} Compare avec le vin précédent</b><p>Lequel te paraît le plus <strong>${esc(spec.label)}</strong> ?</p>
+    <div class="comparison-options">
+      ${[['previous','← Vin précédent'],['similar','≈ Très proches'],['current','Ce vin →']].map(([v,l])=>`<button type="button" class="comparison-option ${choice===v?'selected':''}" onclick="setDiscoveryComparison('${wineId}','${spec.key}','${v}',this)">${l}</button>`).join('')}
+    </div>${verdict?`<small class="muted">Repère personnel : ${verdict} (${b}/5 → ${a}/5).</small>`:''}</div>`;
+ }
+ if(!a||!b)return '';
+ return `<div class="learning-card discovery-compare"><b>${spec.icon} Ton repère avec le vin précédent</b><p><strong>${esc(discoveryCompareChoiceLabel(choice))}</strong>${choice?' était ton ressenti.':''}</p><div class="row"><span>${esc(spec.label)}</span><b>${verdict}</b><small>Vin précédent ${b}/5 → ce vin ${a}/5</small></div></div>`;
+}
+
+async function setDiscoveryComparison(wineId,metric,choice,button=null){
+ if(!['previous','current','similar'].includes(choice))return;
+ if(button){button.parentElement?.querySelectorAll('button').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');}
+ const saved=await upsertAnswer(wineId,{discovery_compare:{metric,choice}});
+ if(!saved)renderPlayerTasting();
 }
 
 function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
@@ -119,10 +214,11 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
    e.explanation=feedback.quiz_explanation||e.explanation;
  }
  const title=`${esc(d?.name||TYPES[w.type])}`;
+ const compareSpec=previousAnswer?discoveryComparisonSpec(d):null;
  const identity=`${esc(regionLabel(d?.region)||"")} ${d?.grapes?.length?"· "+esc(d.grapes.join(" / ")):""} ${d?.price?`· ${Number(d.price).toFixed(2)} €`:""}`;
  let body="";
  if(step===0){
-   body=`<div class=discovery-stage><div class=emoji>🎓</div><h2>${title}</h2><p class=muted>${identity}</p>
+   body=`<div class=discovery-stage>${discoveryThemeSummary()}<div class=emoji>🎓</div><h2>${title}</h2><p class=muted>${identity}</p>
    ${d?.learning_goal?`<div class="learning-card discovery-goal-player"><b>${e.goal?.icon||'🎓'} Ce verre va te faire découvrir</b><div>${esc(e.goal?.label||d.learning_goal)}</div>${e.goal?.short?`<small>${esc(e.goal.short)}</small>`:''}</div>`:""}
    <div class=edu-tip><strong>Comment ça marche ?</strong>Tu vas avancer en 4 temps : observer, sentir, goûter puis comprendre. Il n’y a pas de “mauvaise” sensation : le but est d’apprendre à décrire ce que tu perçois.</div>
    <div class=discovery-nav><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
@@ -157,7 +253,7 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
    <div class=quiz-options>${e.options.slice(0,4).map((opt,i)=>`<button type="button" class="quiz-option ${choice===i?"selected":""} ${answered&&i===e.correct?"correct":""} ${answered&&choice===i&&i!==e.correct?"wrong":""}" ${answered?"disabled":""} onclick="chooseDiscoveryQuiz('${w.id}',${i})">${String.fromCharCode(65+i)}. ${esc(opt)}</button>`).join("")}</div>
    ${answered?`<div class=edu-tip><strong>${correct?"✅ Bien vu !":"💡 À retenir"}</strong>${esc(e.explanation)}</div>`:`<p class=muted>Choisis une réponse pour afficher l’explication.</p>`}
    ${e.learning_note?`<div class=learning-card><b>La leçon de ce verre</b><div>${esc(e.learning_note)}</div></div>`:""}
-   ${discoveryComparisonHtml(a,previousAnswer)}
+   ${previousAnswer?discoveryComparisonHtml(a,previousAnswer,d,w.id,true):''}
    <div class=discovery-summary>
     <div class=row><span>👁️ Intensité visuelle</span><b>${sensoryLabel(a.scores?.look)}</b></div>
     <div class=row><span>👃 Intensité aromatique</span><b>${sensoryLabel(a.scores?.nose)}</b></div>
@@ -165,8 +261,8 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
     <div class=row><span>💪 Corps</span><b>${sensoryLabel(a.scores?.body)}</b></div>
     <div class=row><span>❤️ Plaisir</span><b>${a.note?`${a.note}/10`:"—"}</b></div>
    </div>
-   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button type="button" class=btn ${(!a.note||!answered)?"disabled":""} ${(!a.note||!answered)?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
-   ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:""}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:""}
+   <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',3)">← La bouche</button><button type="button" class=btn ${(!a.note||!answered||(previousAnswer&&!a.discovery_compare?.choice))?"disabled":""} ${(!a.note||!answered||(previousAnswer&&!a.discovery_compare?.choice))?'disabled aria-disabled="true"':""} onclick="submitAnswer('${w.id}')">Terminer ce verre</button></div>
+   ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:''}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:''}${previousAnswer&&!a.discovery_compare?.choice?`<p class=muted>Compare ce vin avec le précédent avant de terminer.</p>`:''}
    </div>`;
  }
  return `<div class="card player-sheet discovery-player-sheet"><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${discoveryProgress(step)}${body}</div>${guideHtml()}`;
@@ -177,7 +273,7 @@ async function renderHostDiscoveryReveal(){
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
  const [rvR,ansR]=await Promise.all([
    supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
-   supabaseClient.from("answers").select("note,quiz_choice,scores,aromas").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
+   supabaseClient.from("answers").select("note,quiz_choice,scores,aromas,discovery_compare").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
  ]);
  if(rvR.error||ansR.error)return toast((rvR.error||ansR.error).message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
@@ -189,6 +285,7 @@ async function renderHostDiscoveryReveal(){
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN DU VERRE</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))} · ${Number(rv.price).toFixed(2)} €</p></div>
  ${edu.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(edu.learning_note)}</p></div>`:""}
+ ${game.current>0?`<div class=card><h2>⚖️ Ce qu’a ressenti le groupe</h2>${discoveryComparisonDistributionHtml(aa,rv)}</div>`:""}
  <div class=card><h2>🧠 Mini-quiz</h2><p><b>${esc(edu.question)}</b></p><p>${quiz}/${aa.length} bonne${quiz>1?"s":""} réponse${aa.length>1?"s":""}.</p><div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><div class=stat><span>❤️ Note plaisir du groupe</span><strong>${aa.length?avg.toFixed(1)+"/10":"—"}</strong></div></div>
  <div class="card sticky"><button type="button" class=btn style="width:100%" onclick="nextWine()">${game.current+1>=game.wine_count?"Terminer la soirée":"Passer au vin suivant →"}</button></div>`;
@@ -198,10 +295,11 @@ async function renderPlayerDiscoveryReveal(){
  const pos=game.current;
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
  const prevWine=pos>0?ws[pos-1]:null;
- const [rvR,a,prevA]=await Promise.all([
+ const [rvR,a,prevA,groupR]=await Promise.all([
    supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
    getAnswer(w.id,true),
-   prevWine?getAnswer(prevWine.id,true):Promise.resolve(null)
+   prevWine?getAnswer(prevWine.id,true):Promise.resolve(null),
+   supabaseClient.from("answers").select("discovery_compare").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
  ]);
  if(rvR.error)return toast(rvR.error.message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
@@ -214,7 +312,7 @@ async function renderPlayerDiscoveryReveal(){
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div>
  ${edu.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(edu.learning_note)}</p></div>`:""}
- ${prevA?`<div class=card><h2>⚖️ Mets ce vin en perspective</h2>${discoveryComparisonHtml(a,prevA)}</div>`:""}
+ ${prevA?`<div class=card><h2>⚖️ Mets ce vin en perspective</h2>${discoveryComparisonHtml(a,prevA,rv)}<h3 style="margin-top:16px">Et le groupe ?</h3>${discoveryComparisonDistributionHtml(groupR.data||[],rv)}</div>`:''}
  <div class=card><h2>${!answered?"⏱️ Réponse non validée":ok?"✅ Bien vu":"🧠 Correction"}</h2><p><b>${esc(edu.question)}</b></p>${answered?`<p>Bonne réponse : <b>${esc(opts[correct]||"—")}</b></p>`:`<p class=muted>Tu n’avais pas terminé ce verre avant la révélation.</p>`}<div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><p class=muted>L’organisateur lancera le prochain vin.</p></div>`;
 }

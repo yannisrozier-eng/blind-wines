@@ -107,12 +107,38 @@ async function reapplyDiscoveryGoal(wineId,goalId){
  if(saved)await renderHostLobby();
 }
 
+
+function discoveryThemeConfigHtml(ws){
+ const preset=discoveryThemePreset(game.discovery_theme);
+ const suggested=(ws||[]).map((w,i)=>{
+   const id=discoverySuggestedGoal(game.discovery_theme,i),goal=id?DISCOVERY_GOALS.find(g=>g.id===id):null;
+   return goal?`<span class="chip static">${i+1}. ${goal.icon} ${esc(goal.label)}</span>`:'';
+ }).filter(Boolean).join('');
+ return `<div class="card discovery-theme-config"><span class="pill">🎓 FIL ROUGE DE LA SOIRÉE</span><h2>Quelle histoire veux-tu faire vivre au groupe ?</h2><p class=muted>Le thème relie les bouteilles entre elles. Il ne remplace pas les objectifs de chaque vin : il donne une progression cohérente à la soirée.</p>
+   <div class="grid"><div><label>Thème</label><select onchange="updateDiscoverySetup(this.value,null)">${discoveryThemeOptionsHtml(game.discovery_theme)}</select></div><div><label>Ce que les participants doivent retenir</label><textarea id="discoveryThemeGoal" onchange="updateDiscoverySetup(null,this.value)" placeholder="Ex. À la fin, savoir distinguer acidité, tanins et corps.">${esc(game.discovery_theme_goal||preset?.desc||'')}</textarea></div></div>
+   ${preset?.sequence?.length?`<div class="theme-sequence"><b>💡 Trame suggérée</b><div class="chips">${suggested}</div><small class=muted>Suggestion uniquement : les objectifs déjà configurés sur les bouteilles restent inchangés.</small></div>`:''}
+ </div>`;
+}
+async function updateDiscoverySetup(theme=null,goal=null){
+ const previousPreset=discoveryThemePreset(game.discovery_theme);
+ const nextTheme=theme===null?(game.discovery_theme||''):theme;
+ const preset=discoveryThemePreset(nextTheme);
+ const currentGoal=document.getElementById('discoveryThemeGoal')?.value||game.discovery_theme_goal||'';
+ const canReplaceDefault=!currentGoal.trim()||currentGoal.trim()===(previousPreset?.desc||'').trim();
+ const nextGoal=goal===null?(canReplaceDefault?(preset?.desc||''):currentGoal):goal;
+ const r=await supabaseClient.rpc('set_discovery_setup',{p_game_id:game.id,p_theme:nextTheme,p_goal:nextGoal});
+ if(r.error)return toast(r.error.message);
+ game.discovery_theme=nextTheme;game.discovery_theme_goal=nextGoal;saveSession();
+ await renderHostLobby();
+}
+
 async function renderHostLobby(){
  const [ws,ps]=await Promise.all([getHostWines(),getPlayers()]);
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>ORGANISATEUR</span></header>
  <div class="card center"><div class=muted>MODE DE LA SOIRÉE</div><h2 style="margin:6px 0 18px">${modeBadge()}</h2><div class=muted>CODE DE LA PARTIE</div><div class=code>${esc(game.code)}</div>
  <div class=row style="justify-content:center"><button type="button" class="btn secondary" onclick="navigator.clipboard?.writeText(game.code)">Copier le code</button><button type="button" class="btn secondary" onclick="navigator.clipboard?.writeText(document.getElementById('joinUrl').textContent)">Copier le lien</button></div>
  <div id=qrcode style="display:flex;justify-content:center;margin:18px 0"></div><div id=joinUrl class="small muted"></div><p class=muted>Scanne le QR code : le code est prérempli.</p></div>
+ ${game.experience_mode==="discovery"?discoveryThemeConfigHtml(ws):""}
  <div class=card><h2>👥 Joueurs <span class=muted>(${Math.max(0,ps.length-1)})</span></h2><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=player-chip>👤 ${esc(p.name)} <button type="button" class=kick title="Retirer ce joueur" onclick="removePlayer('${p.id}')">×</button></span>`).join("")||"<span class=muted>En attente…</span>"}</div></div>
  <div class=card><h2>🍷 Bouteilles · ${modeBadge()}</h2><p class=muted>La couleur, la région et les cépages se sélectionnent dans des listes. Les vraies réponses restent privées jusqu'à la révélation.</p>
  ${ws.map((w,i)=>`<div class=wine-row><div class=wine-head><b>${ICON[w.type]} Vin #${i+1}</b><span class=pill>${TYPES[w.type]}</span></div>
@@ -188,6 +214,8 @@ async function startGame(){
  const missing=ws.filter(w=>!w.name||!w.price||!w.region||!(w.grapes||[]).length);
  if(missing.length)return toast(`Complète les informations des vins : ${missing.map(w=>"#"+(w.position+1)).join(", ")}.`);
  if(game.experience_mode==="discovery"){
+   if(!String(game.discovery_theme||"").trim())return toast("Choisis le fil rouge de la soirée Découverte.");
+   if(!String(game.discovery_theme_goal||"").trim())return toast("Précise ce que les participants doivent retenir à la fin de la soirée.");
    const missingGoal=ws.filter(w=>!String(w.learning_goal||"").trim());
    if(missingGoal.length)return toast(`Choisis l’objectif pédagogique des vins : ${missingGoal.map(w=>"#"+(w.position+1)).join(", ")}.`);
    const badQuiz=ws.filter(w=>{
@@ -229,14 +257,18 @@ function discoveryHostGuide(d){
    `Demande à 2 ou 3 participants de décrire ce qu'ils ressentent sur « ${focus} » avant de donner l'explication.`;
  return {ask,reveal:goal?.learning_note||d?.learning_note||"Relie les sensations exprimées par le groupe à l'objectif pédagogique du verre."};
 }
-function discoveryLiveDashboard(rows,total){
+function discoveryLiveDashboard(rows,total,d=null){
  const stages=[0,1,2,3,4].map(step=>({step,count:rows.filter(a=>Number(a.discovery_step||0)===step&&!a.done).length}));
  const aromas=discoveryTopAromas(rows);
  const acid=discoveryAverage(rows,'acid'), body=discoveryAverage(rows,'body'), nose=discoveryAverage(rows,'nose');
+ const compareRows=rows.filter(a=>a.discovery_compare?.choice);
+ const compareCounts={previous:0,current:0,similar:0};compareRows.forEach(a=>compareCounts[a.discovery_compare.choice]=(compareCounts[a.discovery_compare.choice]||0)+1);
+ const spec=discoveryComparisonSpec(d||{});
  return `<div class="card discovery-live"><div class="discovery-live-head"><div><span class="pill">👥 EN DIRECT</span><h2>Ce que vit le groupe</h2></div><b>${rows.filter(a=>a.done).length}/${total} terminés</b></div>
  <div class="discovery-stage-live">${stages.map(x=>`<div><span>${discoveryStageLabel(x.step)}</span><b>${x.count}</b></div>`).join('')}</div>
  <div class="discovery-live-grid"><div><span>👃 Intensité nez</span><b>${nose?nose.toFixed(1)+'/5':'—'}</b></div><div><span>🍋 Acidité</span><b>${acid?acid.toFixed(1)+'/5':'—'}</b></div><div><span>💪 Corps</span><b>${body?body.toFixed(1)+'/5':'—'}</b></div></div>
  <div class="discovery-live-aromas"><b>👃 Arômes qui ressortent</b>${aromas.length?`<div class="chips">${aromas.map(([x,n])=>`<span class="chip static">${esc(x)} · ${n}</span>`).join('')}</div>`:`<p class="muted">Les réponses apparaîtront ici pendant la dégustation.</p>`}</div>
+ ${game.current>0?`<div class="live-comparison"><b>${spec.icon} Comparaison : lequel paraît le plus ${esc(spec.label)} ?</b><div class="comparison-bars"><span>Vin précédent <b>${compareCounts.previous}</b></span><span>Très proches <b>${compareCounts.similar}</b></span><span>Ce vin <b>${compareCounts.current}</b></span></div></div>`:''}
  <p class="small muted">Ces données servent à lancer la discussion : ce sont des perceptions du groupe, pas des bonnes ou mauvaises réponses.</p></div>`;
 }
 
@@ -250,16 +282,16 @@ async function renderHostTasting(){
    const [d,secretR,liveR]=await Promise.all([
      getDiscoveryWine(w.id),
      supabaseClient.from("wine_secrets").select("host_note").eq("wine_id",w.id).maybeSingle(),
-     supabaseClient.from("answers").select("scores,aromas,note,discovery_step,quiz_choice,done").eq("game_id",game.id).eq("wine_id",w.id)
+     supabaseClient.from("answers").select("scores,aromas,note,discovery_step,quiz_choice,discovery_compare,done").eq("game_id",game.id).eq("wine_id",w.id)
    ]);
    const live=liveR.data||[], guide=discoveryHostGuide(d);
    const privateNote=secretR.data?.host_note||'';
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 DÉCOUVERTE</span></header>
-   <div class="card hero"><div class=emoji>🎓</div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span><h1>${esc(d?.name||"Parcours guidé")}</h1>
+   <div class="card hero">${discoveryThemeSummary()}<div class=emoji>🎓</div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span><h1>${esc(d?.name||"Parcours guidé")}</h1>
    <p class=muted>${d?`${esc(regionLabel(d.region))} · ${esc((d.grapes||[]).join(" / "))}`:"Dégustation pédagogique en cours"}</p>
    ${d?.learning_goal?`<div class="discovery-host-goal"><b>🎯 Objectif :</b> ${esc(discoveryGoalPreset(d.learning_goal)?.label||d.learning_goal)}</div>`:""}</div>
    <div class="card facilitator-card"><span class="pill">🎤 COPILOTE CAVISTE · PRIVÉ</span><h2>Fais parler le groupe avant d'expliquer</h2><div class="facilitator-step"><b>1 · Question à lancer</b><p>${esc(guide.ask)}</p></div><div class="facilitator-step"><b>2 · Puis à révéler</b><p>${esc(guide.reveal)}</p></div>${privateNote?`<div class="facilitator-note"><b>📝 Ta note</b><p>${esc(privateNote)}</p></div>`:''}</div>
-   ${discoveryLiveDashboard(live,total)}
+   ${discoveryLiveDashboard(live,total,d)}
    <div class="card sticky"><button type="button" class="btn gold" style="width:100%" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;
    return;
  }
@@ -332,10 +364,13 @@ async function renderHostResults(){
      return Number(a.quiz_choice)===correct;
    }).length;
    const quizPossible=quizAnswers.length;
+   const groupByGoal=new Map();
+   allAnswers.forEach(a=>{const rv=revealByWine.get(a.wine_id);if(!rv||!Number.isInteger(a.quiz_choice))return;const ed=discoveryDefaults(rv),goal=discoveryGoalPreset(rv.learning_goal);const key=goal?.id||rv.learning_goal||'general';if(!groupByGoal.has(key))groupByGoal.set(key,{label:goal?.label||rv.learning_goal||'Compréhension générale',icon:goal?.icon||'🎓',ok:0,total:0});const x=groupByGoal.get(key);x.total++;if(Number(a.quiz_choice)===ed.correct)x.ok++;});
+   const groupNotions=[...groupByGoal.values()].map(x=>({...x,rate:x.total?x.ok/x.total:0})).sort((a,b)=>b.rate-a.rate);
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
-    <div class="card hero"><div class=emoji>🎓</div><h1>Soirée Découverte terminée</h1><p class=muted>${ps.length} participant${ps.length>1?"s":""} · ${ws.length} vins explorés</p></div>
+    <div class="card hero">${discoveryThemeSummary()}<div class=emoji>🎓</div><h1>Soirée Découverte terminée</h1><p class=muted>${ps.length} participant${ps.length>1?"s":""} · ${ws.length} vins explorés</p></div>
     <div class=card><h2>Ce qu’a préféré le groupe</h2>${wineStats.sort((a,b)=>b.avg-a.avg).map(x=>`<div class=wine-row><b>${ICON[x.w.type]} ${esc(x.rv.name)}</b><span class=pill>${x.count?x.avg.toFixed(1):"—"}/10</span><p class=muted>${esc(x.rv.learning_note||"")}</p></div>`).join("")}</div>
-    <div class=card><h2>🧠 Compréhension</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><p class=muted>Le mode Découverte ne produit pas de classement compétitif : l’objectif est l’apprentissage collectif.</p></div>
+    <div class=card><h2>🧠 Compréhension du groupe</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><div class="notion-grid">${groupNotions.map(n=>`<div class="notion-card ${n.rate>=.67?'mastered':'learning'}"><span>${n.icon}</span><div><b>${esc(n.label)}</b><small>${Math.round(n.rate*100)}% compris · ${n.total} réponse${n.total>1?'s':''}</small></div></div>`).join('')}</div><p class=muted>Pas de classement compétitif : ces données servent au caviste à voir les notions acquises et celles à retravailler.</p></div>
     <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
  }

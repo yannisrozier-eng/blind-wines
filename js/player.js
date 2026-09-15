@@ -4,7 +4,7 @@
 async function renderPlayerLobby(){
  const ps=await getPlayers();
  document.getElementById("app").innerHTML=`<div class="card hero"><div class=emoji>${modeInfo().icon}</div><span class=pill>PARTIE ${esc(game.code)} · ${modeBadge()}</span><h1>Salut ${esc(player.name)} !</h1><p>Tu es connecté.</p>
- <div class=notice>En attente du lancement de la dégustation…</div><h3>Joueurs</h3><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=chip>👤 ${esc(p.name)}</span>`).join("")}</div></div>`;
+ ${game.experience_mode==='discovery'?discoveryThemeSummary():''}<div class=notice>En attente du lancement de la dégustation…</div><h3>Joueurs</h3><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=chip>👤 ${esc(p.name)}</span>`).join("")}</div></div>`;
 }
 
 async function getAnswer(wineId,force=false){
@@ -12,7 +12,7 @@ async function getAnswer(wineId,force=false){
  if(!force&&answerCache.has(key))return answerCache.get(key);
  const r=await supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("wine_id",wineId).eq("user_id",user.id).maybeSingle();
  if(r.error)toast(r.error.message);
- const value=r.data||{game_id:game.id,wine_id:wineId,user_id:user.id,scores:{},aromas:[],note:null,price:null,region:"",grapes:[],grape:"",hint_level:0,discovery_step:0,quiz_choice:null,done:false};
+ const value=r.data||{game_id:game.id,wine_id:wineId,user_id:user.id,scores:{},aromas:[],note:null,price:null,region:"",grapes:[],grape:"",hint_level:0,discovery_step:0,quiz_choice:null,discovery_compare:{},done:false};
  answerCache.set(key,value);return value;
 }
 
@@ -194,6 +194,7 @@ async function submitAnswer(wineId){
  if(a.done)return;
  if(!a.note)return toast("Ajoute ta note globale.");
  if(game.experience_mode==="discovery"&&!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
+ if(game.experience_mode==="discovery"&&game.current>0&&!a.discovery_compare?.choice)return toast("Compare ce vin avec le précédent avant de terminer.");
  if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
 
  const r=await supabaseClient.from("answers")
@@ -252,6 +253,7 @@ async function renderPlayerFinished(){
  const reveals=rr.data||[],as=ar.data||[];
 
  if(game.experience_mode==="discovery"){
+   const progress=discoveryProgressSummary(as,reveals,ws);
    const recap=ws.map((w,i)=>{
      const rv=reveals.find(x=>x.wine_id===w.id),a=as.find(x=>x.wine_id===w.id);
      if(!rv||!a)return "";
@@ -268,7 +270,10 @@ async function renderPlayerFinished(){
      </div>`;
    }).join("");
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 TON PARCOURS</span></header>
-    <div class="card hero"><div class=emoji>🎓</div><h1>Dégustation terminée</h1><p class=muted>Tu as observé, senti, goûté et appris sur ${as.length} vin${as.length>1?"s":""}.</p></div>
+    <div class="card hero">${discoveryThemeSummary()}<div class=emoji>🎓</div><h1>Ton parcours Découverte</h1><p class=muted>Tu as observé, senti, goûté et appris sur ${as.length} vin${as.length>1?"s":""}.</p>
+      <div class="discovery-progress-kpis"><div><span>Mini-quiz</span><b>${progress.total?Math.round(progress.correct/progress.total*100):0}%</b></div><div><span>Comparaisons</span><b>${progress.comparisons}</b></div><div><span>Notions explorées</span><b>${progress.notions.length}</b></div></div></div>
+    <div class=card><h2>📈 Ta progression</h2>${progress.total>=2?`<div class="progress-evolution"><div><span>Première moitié</span><b>${progress.firstRate}%</b></div><div class="progress-arrow">→</div><div><span>Deuxième moitié</span><b>${progress.lastRate}%</b></div></div><p class="${progress.delta>=0?'progress-positive':'muted'}">${progress.delta>0?`+${progress.delta} points de réussite aux mini-quiz entre les deux moitiés.`:progress.delta===0?'Réussite stable aux mini-quiz sur les deux moitiés de la soirée.':'Certaines notions de fin de soirée étaient plus difficiles : c’est un bon repère pour la prochaine dégustation.'}</p>`:`<p class=muted>La progression apparaîtra après plusieurs verres.</p>`}
+      <div class="notion-grid">${progress.notions.map(n=>`<div class="notion-card ${n.rate>=.67?'mastered':'learning'}"><span>${n.icon}</span><div><b>${esc(n.label)}</b><small>${n.ok}/${n.total} réponse${n.total>1?'s':''} comprise${n.ok>1?'s':''}</small></div></div>`).join('')}</div></div>
     <div class=card><h2>Ce que tu as découvert</h2>${recap||"<p class=muted>Aucune fiche enregistrée.</p>"}</div>
     <div class=card><button type="button" class=btn onclick="renderProfile()">📚 Voir mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
    return;
