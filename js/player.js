@@ -103,7 +103,7 @@ function blindRoundIntroHtml(w,ws){
    <div class="blind-round-kicker">11 POINTS EN JEU</div>
    <h1>À toi de lire le verre.</h1>
    <p>${punchlines[(round-1)%punchlines.length]}</p>
-   <div class="blind-round-objectives"><span>💰 Prix <b>5 pts</b></span><span>🗺️ Région <b>3 pts</b></span><span>🍇 Cépages <b>3 pts</b></span></div>
+   <div class="blind-round-objectives"><span><i class="blind-objective-icon" aria-hidden="true">💰</i><em>Prix</em><b>5 pts</b></span><span><i class="blind-objective-icon" aria-hidden="true">🗺️</i><em>Région</em><b>3 pts</b></span><span><i class="blind-objective-icon" aria-hidden="true">🍇</i><em>Cépages</em><b>3 pts</b></span></div>
    <button type="button" class="btn blind-round-start" onclick="startBlindRound('${w.id}')">🍷 Je déguste</button>
  </div>`;
 }
