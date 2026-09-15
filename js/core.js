@@ -35,7 +35,7 @@ const REGION_CATALOG=[
  {id:"cotes_provence",label:"Côtes de Provence",level:"appellation",parent:"provence"},
  {id:"coteaux_aix",label:"Coteaux d’Aix-en-Provence",level:"appellation",parent:"provence"},
  {id:"bandol",label:"Bandol",level:"appellation",parent:"provence"},
- {id:"languedoc",label:"Languedoc-Roussillon",level:"region",parent:"france_sud"},
+ {id:"languedoc",label:"Languedoc",level:"region",parent:"france_sud"},
  {id:"pic_saint_loup",label:"Pic Saint-Loup",level:"appellation",parent:"languedoc"},
  {id:"corbieres",label:"Corbières",level:"appellation",parent:"languedoc"},
  {id:"minervois",label:"Minervois",level:"appellation",parent:"languedoc"},
@@ -76,6 +76,18 @@ const REGION_CATALOG=[
  {id:"alsace",label:"Alsace",level:"region",parent:"france_est"},
  {id:"jura",label:"Jura",level:"region",parent:"france_est"},
  {id:"champagne",label:"Champagne",level:"region",parent:"france_est"},
+ {id:"lorraine",label:"Lorraine",level:"region",parent:"france_est"},
+ {id:"savoie",label:"Savoie",level:"region",parent:"france_est"},
+ {id:"bugey",label:"Bugey",level:"region",parent:"france_est"},
+ {id:"auvergne",label:"Auvergne",level:"region",parent:"france"},
+ {id:"lyonnais_forez",label:"Lyonnais · Forez · Roannaise",level:"region",parent:"france"},
+ {id:"charentes",label:"Charentes",level:"region",parent:"france_ouest"},
+ {id:"corse",label:"Corse",level:"region",parent:"france_sud"},
+ {id:"roussillon",label:"Roussillon",level:"region",parent:"france_sud"},
+ {id:"loire_nantes",label:"Loire · Nantais",level:"subregion",parent:"loire"},
+ {id:"loire_anjou",label:"Loire · Anjou-Saumur",level:"subregion",parent:"loire"},
+ {id:"loire_touraine",label:"Loire · Touraine",level:"subregion",parent:"loire"},
+ {id:"loire_centre",label:"Centre-Loire",level:"subregion",parent:"loire"},
  {id:"sud_ouest",label:"Sud-Ouest",level:"region",parent:"france_sud"},
  {id:"cahors",label:"Cahors",level:"appellation",parent:"sud_ouest"},
  {id:"madiran",label:"Madiran",level:"appellation",parent:"sud_ouest"},
@@ -157,7 +169,19 @@ const REGION_GRAPES={
  alsace:["Riesling","Gewurztraminer","Pinot gris","Pinot blanc","Pinot noir"],
  jura:["Savagnin","Chardonnay","Poulsard","Trousseau","Pinot noir"],
  champagne:["Chardonnay","Pinot noir","Meunier"],
- sud_ouest:["Malbec","Tannat","Négrette","Colombard","Gros Manseng","Petit Manseng"]
+ sud_ouest:["Malbec","Tannat","Négrette","Colombard","Gros Manseng","Petit Manseng"],
+ lorraine:["Pinot noir","Gamay","Auxerrois","Pinot gris"],
+ savoie:["Mondeuse","Gamay","Pinot noir","Jacquère","Altesse","Chasselas","Roussanne"],
+ bugey:["Gamay","Pinot noir","Mondeuse","Altesse","Chardonnay"],
+ auvergne:["Gamay","Pinot noir","Chardonnay","Tressallier"],
+ lyonnais_forez:["Gamay","Chardonnay"],
+ charentes:["Merlot","Cabernet Franc","Cabernet Sauvignon","Ugni blanc","Colombard","Sauvignon blanc"],
+ corse:["Niellucciu","Sciaccarellu","Grenache","Rolle / Vermentino"],
+ roussillon:["Grenache","Carignan","Syrah","Mourvèdre","Grenache blanc"],
+ loire_nantes:["Melon de Bourgogne","Folle blanche","Gamay","Pinot noir"],
+ loire_anjou:["Chenin blanc","Cabernet Franc","Cabernet Sauvignon","Grolleau"],
+ loire_touraine:["Chenin blanc","Sauvignon blanc","Cabernet Franc","Gamay","Côt"],
+ loire_centre:["Sauvignon blanc","Pinot noir","Chasselas"]
 };
 
 const EXPERIENCE={
@@ -211,20 +235,23 @@ function regionAncestors(id){
  return out;
 }
 
+function canonicalRegionId(id){
+ let cur=regionObj(id);
+ while(cur&&!["region","subregion"].includes(cur.level))cur=cur.parent?regionObj(cur.parent):null;
+ return cur?.id||id||"";
+}
+
 function regionScore(guess,real){
+ guess=canonicalRegionId(guess);real=canonicalRegionId(real);
  if(!guess||!real)return 0;
  if(guess===real)return 3;
  const ga=regionAncestors(guess),ra=regionAncestors(real);
- if(ga.includes(real)||ra.includes(guess)){
-   const g=regionObj(guess),r=regionObj(real);
-   if(["macro","country"].includes(g?.level)||["macro","country"].includes(r?.level))return 1;
-   return 2;
- }
+ if(ga.includes(real)||ra.includes(guess))return 2;
  const shared=ga.find(x=>ra.includes(x));
  if(shared){
-   // Deux appellations/régions sœurs ne sont pas une relation parent/enfant :
-   // elles gardent seulement le point de proximité géographique.
-   return 1;
+   const common=regionObj(shared);
+   // 1 point seulement pour une vraie proximité macro-régionale ; partager uniquement le pays ne suffit plus.
+   if(common?.level==="macro")return 1;
  }
  return 0;
 }
@@ -373,22 +400,23 @@ function regionTrail(id){
 }
 
 function regionPickerHtml(id,selected="",mode="player"){
- const current=selected?regionLabel(selected):"Choisir une région / appellation";
+ const selectedRegion=canonicalRegionId(selected);
+ const current=selectedRegion?regionLabel(selectedRegion):"Choisir une région";
  const rows=REGION_CATALOG
-   .filter(r=>r.parent)
+   .filter(r=>["region","subregion"].includes(r.level))
    .map(r=>{
-     const trail=regionTrail(r.id);
+     const trail=regionTrail(r.id).filter(x=>!["France","Sud de la France","Ouest de la France","Est de la France"].includes(x));
      const context=trail.slice(1).join(" · ");
      const search=trail.join(" ");
-     return `<button type="button" class="choice-option ${selected===r.id?"selected":""}" data-search-value="${esc(search)}" onclick="chooseRegion('${mode}','${esc(id)}','${esc(r.id)}',this)">
-       <span><b>${esc(r.label)}</b>${context?`<small>${esc(context)}</small>`:""}</span>${selected===r.id?"<span>✓</span>":""}
+     return `<button type="button" class="choice-option ${selectedRegion===r.id?"selected":""}" data-search-value="${esc(search)}" onclick="chooseRegion('${mode}','${esc(id)}','${esc(r.id)}',this)">
+       <span><b>${esc(r.label)}</b>${context?`<small>${esc(context)}</small>`:""}</span>${selectedRegion===r.id?"<span>✓</span>":""}
      </button>`;
    }).join("");
  return `<details class="searchable-picker region-picker">
    <summary><span>${esc(current)}</span><span>⌄</span></summary>
    <div class="choice-picker-body">
      <div class="choice-search-wrap">
-       <input type="search" class="choice-search" placeholder="Rechercher une région, appellation…" autocomplete="off" oninput="filterChoiceOptions(this)">
+       <input type="search" class="choice-search" placeholder="Rechercher une région…" autocomplete="off" oninput="filterChoiceOptions(this)">
        <button type="button" class="choice-search-clear" onclick="clearChoiceSearch(this.previousElementSibling)" aria-label="Effacer la recherche">×</button>
      </div>
      <button type="button" class="choice-option choice-clear" data-search-value="aucune effacer vide" onclick="chooseRegion('${mode}','${esc(id)}','',this)"><span>Effacer la sélection</span></button>
@@ -404,7 +432,7 @@ async function chooseRegion(mode,id,regionId,button){
  const oldLabel=summary?.textContent||"";
  const oldSelected=picker?.querySelector(".choice-option.selected")||null;
 
- if(summary)summary.textContent=regionId?regionLabel(regionId):"Choisir une région / appellation";
+ if(summary)summary.textContent=regionId?regionLabel(regionId):"Choisir une région";
  picker?.querySelectorAll(".choice-option").forEach(x=>x.classList.remove("selected"));
  if(regionId)button.classList.add("selected");
 

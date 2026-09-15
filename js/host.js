@@ -146,7 +146,7 @@ async function renderHostLobby(){
   <div><label>Couleur du vin</label><select onchange="updateWineType('${w.id}',this.value)">${typeOptions(w.type)}</select></div>
   <div><label>Nom du vin / cuvée</label><input value="${esc(w.name||"")}" onchange="updateWineSecret('${w.id}','name',this.value)" placeholder="Ex. Whispering Angel"></div>
   <div><label>Prix réel (€)</label><input type=number min=.01 step=.01 value="${w.price??""}" onchange="updateWineSecret('${w.id}','price',this.value===''?null:Number(this.value))"></div>
-  <div><label>Région / appellation</label>${regionPickerHtml(w.id,w.region||"","host")}</div>
+  <div><label>Région</label>${regionPickerHtml(w.id,w.region||"","host")}</div>
   <div style="grid-column:1/-1"><label>Cépage(s) / assemblage</label>${grapePickerHtml(w.id,w.grapes||w.grape,"host")}</div>
   ${game.experience_mode==="discovery"?discoveryConfigHtml(w):""}
   ${game.experience_mode==="challenge"?`<div style="grid-column:1/-1"><label>💡 Explication après révélation</label><textarea onchange="updateWineSecret('${w.id}','learning_note',this.value)" placeholder="Ce que les joueurs doivent retenir une fois le vin révélé.">${esc(w.learning_note||"")}</textarea></div><div><label>Indice 1 · léger</label><input value="${esc(w.hint1||"")}" onchange="updateWineSecret('${w.id}','hint1',this.value)" placeholder="Ex. Cherche le poivre et les fruits noirs"></div><div><label>Indice 2 · précis</label><input value="${esc(w.hint2||"")}" onchange="updateWineSecret('${w.id}','hint2',this.value)" placeholder="Ex. Rhône Nord"></div>`:""}

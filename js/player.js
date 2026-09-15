@@ -123,6 +123,7 @@ async function requestBlindLock(wineId){
  const a=await getAnswer(wineId,true);
  if(a.done)return;
  if(!a.note)return toast("Ajoute ta note plaisir avant de verrouiller.");
+ if(!(a.aromas||[]).length)return toast("Choisis au moins un arôme dans ‘Lis le verre’ avant de verrouiller.");
  if(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length)return toast("Complète tes 3 paris : prix, région et cépage(s).");
  const overlay=document.createElement("div");
  overlay.className="blind-lock-overlay";
@@ -143,6 +144,42 @@ async function requestBlindLock(wineId){
 }
 
 
+const BLIND_AROMA_GROUPS={
+ red:[
+  {name:'Fruits rouges',icon:'🍓',items:['Fraise','Framboise','Cerise','Griotte','Groseille','Cranberry']},
+  {name:'Fruits noirs',icon:'🫐',items:['Cassis','Mûre','Prune','Myrtille','Cerise noire']},
+  {name:'Floral',icon:'🌸',items:['Violette','Rose','Pivoine','Fleurs séchées']},
+  {name:'Épices & herbes',icon:'🌿',items:['Poivre noir','Poivre blanc','Réglisse','Garrigue','Thym','Laurier','Menthe','Olive noire']},
+  {name:'Élevage',icon:'🪵',items:['Vanille','Cèdre','Bois toasté','Café','Cacao','Tabac']},
+  {name:'Évolution',icon:'🍂',items:['Cuir','Sous-bois','Champignon','Terre humide','Viande fumée','Truffe']},
+  {name:'Minéral / autres',icon:'🪨',items:['Graphite','Pierre','Fumée','Sanguin / fer']}
+ ],
+ white:[
+  {name:'Agrumes',icon:'🍋',items:['Citron','Citron vert','Pamplemousse','Orange','Mandarine','Zeste d’agrumes']},
+  {name:'Fruits blancs',icon:'🍐',items:['Pomme verte','Pomme mûre','Poire','Coing']},
+  {name:'Fruits jaunes',icon:'🍑',items:['Pêche','Abricot','Mirabelle','Nectarine']},
+  {name:'Exotiques',icon:'🥭',items:['Ananas','Fruit de la passion','Mangue','Litchi']},
+  {name:'Floral',icon:'🌼',items:['Fleurs blanches','Acacia','Chèvrefeuille','Rose','Violette']},
+  {name:'Végétal / herbacé',icon:'🌿',items:['Herbe fraîche','Buis','Fenouil','Menthe','Foin']},
+  {name:'Élevage / texture',icon:'🪵',items:['Vanille','Beurre','Noisette','Amande','Brioche','Levure','Pain grillé']},
+  {name:'Évolution',icon:'🍯',items:['Miel','Cire','Fruits secs','Noix','Curry','Pétrole']},
+  {name:'Minéral / marin',icon:'🪨',items:['Pierre à fusil','Craie','Silex','Iode','Salin']}
+ ],
+ rose:[
+  {name:'Fruits rouges',icon:'🍓',items:['Fraise','Framboise','Groseille','Cerise','Pastèque']},
+  {name:'Agrumes',icon:'🍊',items:['Pamplemousse','Orange','Citron','Zeste d’agrumes']},
+  {name:'Fruits jaunes / exotiques',icon:'🍑',items:['Pêche','Abricot','Melon','Fruit de la passion']},
+  {name:'Floral',icon:'🌸',items:['Rose','Fleurs blanches','Pivoine']},
+  {name:'Herbes & épices',icon:'🌿',items:['Garrigue','Thym','Poivre blanc','Fenouil']},
+  {name:'Minéral / marin',icon:'🪨',items:['Pierre','Iode','Salin']}
+ ]
+};
+function blindAromaGroups(type){return BLIND_AROMA_GROUPS[type]||BLIND_AROMA_GROUPS.red;}
+function blindAromaPickerHtml(w,a){
+ const selected=a.aromas||[];
+ return `<section class="blind-aromas-required"><div class="blind-aroma-title"><div><span>👃 ARÔMES · OBLIGATOIRE</span><b>Qu’est-ce que tu reconnais vraiment ?</b></div><em>${selected.length} sélectionné${selected.length>1?'s':''}</em></div><p class="muted small">Choisis au moins un arôme. Plus tes choix sont précis, plus l’aide cépage pourra affiner ses pistes.</p><div class="blind-aroma-groups">${blindAromaGroups(w.type).map(group=>`<div class="blind-aroma-group"><h4><span>${group.icon}</span>${esc(group.name)}</h4><div class="chips">${group.items.map(x=>`<button type="button" class="chip blind-aroma-chip ${selected.includes(x)?'sel':''}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join('')}</div></div>`).join('')}</div></section>`;
+}
+
 const BLIND_METRIC_OPTIONS={
  look:[['🌫️','Pâle'],['🌤️','Clair'],['🎨','Moyen'],['🌅','Soutenu'],['🌑','Intense']],
  nose:[['🤫','Discret'],['🌱','Léger'],['👃','Présent'],['🌺','Expressif'],['💥','Intense']],
@@ -159,21 +196,23 @@ function blindScaleValue(text,kind){
  return 3;
 }
 function blindAromaKeywords(label){
- const m={
-  'Fruits rouges':['cerise','fraise','framboise','groseille'],
-  'Fruits noirs':['mure','cassis','prune','cerise noire'],
-  'Agrumes':['citron','agrumes'],
-  'Fruits blancs':['pomme','poire','coing','peche'],
-  'Fruits exotiques':['litchi','passion','exotique','abricot'],
-  'Floral':['violette','rose','fleur'],
-  'Épices':['poivre','epice','reglisse','curry','garrigue'],
-  'Épicé':['poivre','epice','reglisse','curry','garrigue'],
-  'Minéral':['pierre','iode','salin','mineral','graphite','craie'],
-  'Boisé':['cedre','tabac','boise','beurre','noisette'],
-  'Végétal':['herbe','buis','poivron','olive','fenouil'],
-  'Cuir / tabac':['cuir','tabac','viande','fume']
+ const s=normalizeChoiceSearch(label||'');
+ const direct={
+  'fraise':['fraise'],'framboise':['framboise'],'cerise':['cerise'],'griotte':['cerise'],'groseille':['groseille','fruits rouges'],'cranberry':['fruits rouges'],
+  'cassis':['cassis'],'mure':['mure','fruits noirs'],'prune':['prune'],'myrtille':['fruits noirs'],'cerise noire':['cerise noire','fruits noirs'],
+  'violette':['violette'],'rose':['rose','fleurs'],'pivoine':['fleurs'],'fleurs sechees':['fleurs','floral'],'fleurs blanches':['fleurs','floral'],'acacia':['fleurs'],'chevrefeuille':['fleurs'],
+  'poivre noir':['poivre'],'poivre blanc':['poivre'],'reglisse':['reglisse','epices'],'garrigue':['garrigue','herbes'],'thym':['herbes','garrigue'],'laurier':['herbes'],'menthe':['herbes'],'olive noire':['olive'],
+  'vanille':['vanille','boise'],'cedre':['cedre','boise'],'bois toaste':['boise','toaste'],'cafe':['cafe','boise'],'cacao':['chocolat','cacao'],'tabac':['tabac','cedre'],'cuir':['cuir'],'sous bois':['sous-bois','terre'],'champignon':['sous-bois','champignon'],'terre humide':['terre','sous-bois'],'viande fumee':['viande','fume'],'truffe':['sous-bois','truffe'],
+  'graphite':['graphite'],'pierre':['pierre','mineral'],'fumee':['fume'],'sanguin fer':['fer','sanguin'],
+  'citron':['citron','agrumes'],'citron vert':['citron','agrumes'],'pamplemousse':['agrumes'],'orange':['agrumes'],'mandarine':['agrumes'],'zeste agrumes':['agrumes'],
+  'pomme verte':['pomme'],'pomme mure':['pomme'],'poire':['poire'],'coing':['coing'],'peche':['peche'],'abricot':['abricot'],'mirabelle':['fruits jaunes'],'nectarine':['peche'],'ananas':['fruits exotiques'],'fruit de la passion':['passion','fruits exotiques'],'mangue':['fruits exotiques'],'litchi':['litchi','fruits exotiques'],
+  'herbe fraiche':['herbe','vegetal'],'buis':['buis','vegetal'],'fenouil':['fenouil','herbes'],'foin':['herbe','vegetal'],
+  'beurre':['beurre'],'noisette':['noisette'],'amande':['amande'],'brioche':['brioche','levure'],'levure':['levure'],'pain grille':['toaste','brioche'],'miel':['miel'],'cire':['cire'],'fruits secs':['fruits secs'],'noix':['noix'],'curry':['curry','epices'],'petrole':['petrole'],
+  'pierre a fusil':['pierre','mineral','fumee'],'craie':['craie','mineral'],'silex':['pierre','mineral','fumee'],'iode':['iode','salin'],'salin':['salin','iode'],
+  'pasteque':['fruits rouges'],'melon':['fruits jaunes']
  };
- return m[label]||[];
+ if(direct[s])return direct[s];
+ return [s];
 }
 function blindGrapeAssistCandidates(w,a){
  if(typeof BLIND_GRAPE_PROFILES==='undefined')return [];
@@ -187,8 +226,12 @@ function blindGrapeAssistCandidates(w,a){
    if(body){const target=blindScaleValue(g.body,'body');const d=Math.abs(body-target);score+=Math.max(0,3-d);if(d<=1)why.push(`corps ${g.body.toLowerCase()}`)}
    if(acid){const target=blindScaleValue(g.acid,'acid');const d=Math.abs(acid-target);score+=Math.max(0,3-d);if(d<=1)why.push(`acidité ${g.acid.toLowerCase()}`)}
    if(look&&g.color==='Rouge'){const meta=typeof blindGrapeMeta==='function'?blindGrapeMeta(g.name):null;const l=normalizeChoiceSearch(meta?.look||'');if(look<=2&&(l.includes('pale')||l.includes('claire')||l.includes('legere'))){score+=1.5;why.push('robe plutôt claire')}if(look>=4&&(l.includes('sombre')||l.includes('profonde')||l.includes('dense')||l.includes('soutenue'))){score+=1.5;why.push('robe soutenue')}}
-   const markerText=normalizeChoiceSearch(g.markers.join(' '));
-   for(const aroma of aromas){const keys=blindAromaKeywords(aroma);if(keys.some(k=>markerText.includes(normalizeChoiceSearch(k)))){score+=2.2;why.push(aroma.toLowerCase())}}
+   const meta=typeof blindGrapeMeta==='function'?blindGrapeMeta(g.name):null;
+   const markerText=normalizeChoiceSearch([...(g.markers||[]),meta?.look||'',meta?.feel||'',...(meta?.orientation||[]),...(meta?.confusions||[])].join(' '));
+   let aromaHits=0;
+   for(const aroma of aromas){const keys=blindAromaKeywords(aroma);if(keys.some(k=>markerText.includes(normalizeChoiceSearch(k)))){score+=3.2;aromaHits++;why.push(aroma.toLowerCase())}}
+   if(aromaHits>=2)score+=1.4;
+   if(aromaHits>=3)score+=1.2;
    if(isRose){
      if(['Cinsault','Grenache'].includes(g.name)){score+=1.1;why.push('cépage fréquent en rosé')}
      if(['Syrah','Mourvèdre'].includes(g.name)){score+=0.5}
@@ -199,9 +242,9 @@ function blindGrapeAssistCandidates(w,a){
 }
 function blindGrapeAssistHtml(w,a){
  const filled=(a.scores?.acid||a.scores?.body||(a.aromas||[]).length);
- if(!filled)return `<div class="blind-grape-assist" id="blind-grape-assist"><div class="blind-assist-head"><span>🧭 AIDE CÉPAGE</span><b>Donne-moi quelques repères</b></div><p>Renseigne surtout <strong>acidité</strong>, <strong>corps</strong> et quelques <strong>arômes</strong>. Je te proposerai ensuite des pistes à explorer.</p></div>`;
+ if(!filled)return `<div class="blind-grape-assist" id="blind-grape-assist"><div class="blind-assist-head"><span>🧭 AIDE CÉPAGE</span><b>Donne-moi quelques repères</b></div><p>Commence par sélectionner tes <strong>arômes</strong>, puis ajoute acidité et corps. Les arômes précis pèsent fortement dans les pistes proposées.</p></div>`;
  const picks=blindGrapeAssistCandidates(w,a);
- if(!picks.length)return `<div class="blind-grape-assist" id="blind-grape-assist"><div class="blind-assist-head"><span>🧭 AIDE CÉPAGE</span><b>Profil encore trop ouvert</b></div><p>Ajoute un repère de corps, d’acidité ou un arôme supplémentaire pour affiner les pistes.</p></div>`;
+ if(!picks.length)return `<div class="blind-grape-assist" id="blind-grape-assist"><div class="blind-assist-head"><span>🧭 AIDE CÉPAGE</span><b>Profil encore trop ouvert</b></div><p>Ajoute un ou deux arômes précis, puis affine avec le corps et l’acidité.</p></div>`;
  const roseNote=w?.type==='rose'?'<p class="blind-assist-rose">🌸 Pour un rosé, pense en <b>cépages possibles d’assemblage</b> : la couleur et le style de pressurage rendent l’identification plus incertaine qu’en rouge ou en blanc.</p>':'';
  return `<div class="blind-grape-assist" id="blind-grape-assist"><div class="blind-assist-head"><span>🧭 AIDE CÉPAGE · SELON TES SENSATIONS</span><b>${picks.length} piste${picks.length>1?'s':''} à explorer</b></div>${roseNote}<div class="blind-assist-picks">${picks.map((x,i)=>`<button type="button" onclick="openBlindWineAtlas('grapes');setTimeout(()=>selectBlindAtlasGrape(decodeURIComponent('${encodeURIComponent(x.g.name)}')),60)"><span>${i===0?'🎯':'🍇'}</span><div><b>${esc(x.g.name)}</b><small>${x.why.length?esc(x.why.join(' · ')):'profil global compatible'}</small></div><em>Voir →</em></button>`).join('')}</div><p class="blind-assist-warning">Ce sont des <b>pistes générales</b> calculées uniquement à partir de ce que tu as renseigné, jamais à partir du vin caché.</p></div>`;
 }
@@ -217,7 +260,7 @@ function blindGuessForm(w,a){
    <div class="blind-section-head"><div><span>1 · TES SENSATIONS</span><h2>Lis le verre</h2></div><span class="blind-section-badge">Aide à la décision</span></div>
    <p class="muted">Note rapidement ce que tu ressens. Ici, aucun point : ces repères servent seulement à construire ton pari.</p>
    <div class="blind-sensory-grid">${metric("👁️ Visuel","look",a)}${metric("👃 Nez","nose",a)}${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur","sweet",a)}${metric("💪 Corps","body",a)}${metric("⏱️ Finale","finish",a)}</div>
-   <details class="blind-aromas-details"><summary>👃 Arômes que je repère <span>${(a.aromas||[]).length?`· ${(a.aromas||[]).length} sélectionné${(a.aromas||[]).length>1?'s':''}`:'· facultatif'}</span></summary><div class="chips">${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></details>
+   ${blindAromaPickerHtml(w,a)}
    ${blindGrapeAssistHtml(w,a)}
    <div class="blind-pleasure"><span>❤️ Coup de cœur ?</span><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
  </div>
@@ -239,7 +282,7 @@ function renderPlayerBlindTasting(w,a,ws){
    <div class="blind-play-head"><div><span class="blind-live-pill">● MANCHE ${game.current+1}</span><h1>Quel vin se cache ici ?</h1><p class=muted>Construis ton intuition, puis engage tes 3 paris.</p></div><div class="blind-points-orbit"><b>11</b><span>PTS</span></div></div>
    ${blindGuessForm(w,a)}
    ${blindWineAtlasButtonHtml()}
-   <div class="card sticky player-action blind-lock-bar"><div><small>Quand tu es sûr de toi</small><b>Prix · Région · Cépages</b></div><button type="button" class="btn" onclick="requestBlindLock('${w.id}')">🔒 Verrouiller mon pari</button></div>
+   <div class="card sticky player-action blind-lock-bar"><div><small>Quand tu es sûr de toi</small><b>Arômes · Prix · Région · Cépages</b></div><button type="button" class="btn" onclick="requestBlindLock('${w.id}')">🔒 Verrouiller mon pari</button></div>
  </div>`;
 }
 
@@ -350,6 +393,7 @@ async function submitAnswer(wineId){
    if(!Number.isInteger(a.quiz_choice))return toast("Réponds au mini-quiz avant de terminer.");
  }
  if(game.experience_mode==="discovery"&&game.current>0&&!a.discovery_compare?.choice)return toast("Compare ce vin avec le précédent avant de terminer.");
+ if(game.experience_mode==="blind"&&!(a.aromas||[]).length)return toast("Choisis au moins un arôme avant de verrouiller ton blind.");
  if(game.experience_mode!=="discovery"&&(a.price==null||a.price<=0||!a.region||!answerGrapes(a).length))return toast("Ajoute un prix positif, une région et au moins un cépage.");
 
  const r=await supabaseClient.from("answers")

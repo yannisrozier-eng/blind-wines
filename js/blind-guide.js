@@ -657,7 +657,7 @@ function blindRegionCard(r,compact=false){
   <div class="blind-atlas-block"><b>🍇 Cépages rouges</b><div class="chips">${r.reds.length?r.reds.map(x=>`<span class="chip static">${esc(x)}</span>`).join(''):'<span class="muted small">Peu représentés ici</span>'}</div></div>
   <div class="blind-atlas-block"><b>🥂 Cépages blancs</b><div class="chips">${r.whites.length?r.whites.map(x=>`<span class="chip static">${esc(x)}</span>`).join(''):'<span class="muted small">Peu représentés ici</span>'}</div></div>
   <div class="blind-atlas-block"><b>👃 Repères fréquents</b><p>${r.markers.map(esc).join(' · ')}</p></div>
-  <div class="blind-atlas-block"><b>📍 Appellations à retenir</b><p>${r.appellations.map(esc).join(' · ')}</p></div></article>`;
+  <div class="blind-atlas-note">🗺️ Dans le jeu, retiens la <b>région</b> : les appellations ne sont plus demandées.</div></article>`;
 }
 
 
@@ -699,7 +699,7 @@ function blindAtlasCompareHtml(){
 function blindAtlasBodyHtml(){
  if(blindAtlasState.tab==='map'){
    const r=BLIND_WINE_REGIONS.find(x=>x.id===blindAtlasState.region)||null;
-   return `<div class="blind-atlas-map-layout"><div>${blindFranceMapSvg()}<p class="blind-atlas-disclaimer">Carte pédagogique : positionnement géographique des vignobles, sans prétendre reproduire les limites exactes des AOP.</p><div class="blind-map-region-index">${BLIND_WINE_REGIONS.map(x=>`<button type="button" onclick="selectBlindAtlasRegion('${x.id}')">${x.icon} ${esc(x.name)}</button>`).join('')}</div></div><div class="blind-atlas-side">${r?blindRegionCard(r):'<div class="blind-atlas-empty"><span>🗺️</span><b>Touche une région</b><p>Tu verras ses cépages fréquents, ses repères aromatiques et quelques appellations.</p></div>'}</div></div>`;
+   return `<div class="blind-atlas-map-layout"><div>${blindFranceMapSvg()}<p class="blind-atlas-disclaimer">Carte pédagogique : positionnement géographique des vignobles, sans prétendre reproduire les limites exactes des AOP.</p><div class="blind-map-region-index">${BLIND_WINE_REGIONS.map(x=>`<button type="button" onclick="selectBlindAtlasRegion('${x.id}')">${x.icon} ${esc(x.name)}</button>`).join('')}</div></div><div class="blind-atlas-side">${r?blindRegionCard(r):'<div class="blind-atlas-empty"><span>🗺️</span><b>Touche une région</b><p>Tu verras ses cépages fréquents, son style et ses repères aromatiques.</p></div>'}</div></div>`;
  }
  if(blindAtlasState.tab==='regions'){
    const q='';
