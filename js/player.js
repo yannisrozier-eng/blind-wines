@@ -32,7 +32,9 @@ async function renderPlayerTasting(){
  if(game.experience_mode==="discovery"){
    const discovery=await getDiscoveryWine(w.id);
    const feedback=Number.isInteger(a.quiz_choice)?await getDiscoveryQuizFeedback(w.id):null;
-   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>${renderDiscoveryJourney(w,a,discovery,feedback)}`;
+   const previousWine=game.current>0?ws[game.current-1]:null;
+   const previousAnswer=previousWine?await getAnswer(previousWine.id,true):null;
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>${renderDiscoveryJourney(w,a,discovery,feedback,previousAnswer)}`;
    return;
  }
 

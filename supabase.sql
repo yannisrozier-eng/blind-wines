@@ -108,6 +108,8 @@ alter table public.answers drop constraint if exists answers_hint_level_check;
 alter table public.answers add constraint answers_hint_level_check check (hint_level between 0 and 2);
 alter table public.wine_secrets add column if not exists learning_goal text not null default '';
 alter table public.wine_secrets add column if not exists learning_note text not null default '';
+-- V3.7.0 — note privée d'animation, visible uniquement par l'hôte.
+alter table public.wine_secrets add column if not exists host_note text not null default '';
 alter table public.wine_secrets add column if not exists hint1 text not null default '';
 alter table public.wine_secrets add column if not exists hint2 text not null default '';
 alter table public.wine_reveals add column if not exists learning_goal text not null default '';

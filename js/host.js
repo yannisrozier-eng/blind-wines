@@ -56,6 +56,7 @@ function discoveryConfigHtml(w){
        <div style="grid-column:1/-1"><label>Réponses du quiz (une par ligne, 2 à 4)</label><textarea data-quiz-options="${w.id}" oninput="previewQuizOptions('${w.id}',this.value)" onchange="updateQuizOptions('${w.id}',this.value)" placeholder="Une salivation plus importante&#10;Une sensation de bouche sèche&#10;Une couleur plus foncée">${esc((options.length?options:(preset?.options||[])).join('\n'))}</textarea><p class="small muted" style="margin:6px 0 0">Écris 2 à 4 propositions, une par ligne.</p></div>
        <div style="grid-column:1/-1"><label>✅ Quelle est la bonne réponse ?</label><select data-quiz-correct="${w.id}" ${(options.length?options:(preset?.options||[])).length<2?'disabled':''} onchange="updateWineSecret('${w.id}','quiz_correct',this.value===''?null:Number(this.value))">${quizCorrectOptionsHtml(options.length?options:(preset?.options||[]),Number.isInteger(w.quiz_correct)?w.quiz_correct:preset?.correct)}</select><p class="small muted" data-quiz-correct-hint="${w.id}" style="margin:6px 0 0">Choisis directement la bonne réponse parmi les propositions ci-dessus.</p></div>
        <div style="grid-column:1/-1"><label>Explication après le quiz</label><textarea onchange="updateWineSecret('${w.id}','quiz_explanation',this.value)" placeholder="Explique simplement pourquoi cette réponse est correcte.">${esc(w.quiz_explanation||preset?.explanation||'')}</textarea></div>
+       <div style="grid-column:1/-1" class="host-private-note"><label>🎤 Note privée pour animer ce verre</label><textarea onchange="updateWineSecret('${w.id}','host_note',this.value)" placeholder="Ex. Laisser chacun sentir 20 secondes. Demander : qu'est-ce qui vous fait dire fruité ? Ne donner la réponse qu'après 2 ou 3 avis.">${esc(w.host_note||'')}</textarea><p class="small muted" style="margin:6px 0 0">Visible uniquement par l'organisateur. Elle n'est jamais envoyée aux participants.</p></div>
      </div>
    </details>
  </div>`;
@@ -205,6 +206,40 @@ async function startGame(){
  if(r.error)toast(r.error.message);
 }
 
+function discoveryStageLabel(step){
+ return ['Introduction','Œil','Nez','Bouche','Comprendre'][Math.max(0,Math.min(4,Number(step||0)))]||'Introduction';
+}
+function discoveryAverage(rows,key){
+ const vals=rows.map(a=>Number(a.scores?.[key])).filter(v=>v>=1&&v<=5);
+ return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null;
+}
+function discoveryTopAromas(rows,limit=4){
+ const counts=new Map();
+ rows.forEach(a=>(a.aromas||[]).forEach(x=>counts.set(x,(counts.get(x)||0)+1)));
+ return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit);
+}
+function discoveryHostGuide(d){
+ const goal=discoveryGoalPreset(d?.learning_goal);
+ const focus=goal?.label||d?.learning_goal||'le thème du verre';
+ const ask=goal?.id==='aromas'?"Demande d'abord une grande famille : fruit, fleur, épice, végétal ou bois. Puis demande ce qui leur fait choisir cette famille.":
+   goal?.id==='acidity'?"Après une gorgée, demande : est-ce que votre bouche se remet à saliver ? Fais comparer les réponses avant d'expliquer l'acidité.":
+   goal?.id==='tannins'?"Demande où ils ressentent l'assèchement : gencives, langue, joues. Fais décrire la sensation avant de prononcer le mot tanins.":
+   goal?.id==='body'?"Demande : ce vin vous paraît-il léger comme de l'eau, ou plus ample et dense ? Fais justifier les extrêmes.":
+   goal?.id==='oak'?"Fais chercher d'abord librement les arômes. Ensuite seulement, propose toasté, vanille, fumé ou épices comme pistes.":
+   `Demande à 2 ou 3 participants de décrire ce qu'ils ressentent sur « ${focus} » avant de donner l'explication.`;
+ return {ask,reveal:goal?.learning_note||d?.learning_note||"Relie les sensations exprimées par le groupe à l'objectif pédagogique du verre."};
+}
+function discoveryLiveDashboard(rows,total){
+ const stages=[0,1,2,3,4].map(step=>({step,count:rows.filter(a=>Number(a.discovery_step||0)===step&&!a.done).length}));
+ const aromas=discoveryTopAromas(rows);
+ const acid=discoveryAverage(rows,'acid'), body=discoveryAverage(rows,'body'), nose=discoveryAverage(rows,'nose');
+ return `<div class="card discovery-live"><div class="discovery-live-head"><div><span class="pill">👥 EN DIRECT</span><h2>Ce que vit le groupe</h2></div><b>${rows.filter(a=>a.done).length}/${total} terminés</b></div>
+ <div class="discovery-stage-live">${stages.map(x=>`<div><span>${discoveryStageLabel(x.step)}</span><b>${x.count}</b></div>`).join('')}</div>
+ <div class="discovery-live-grid"><div><span>👃 Intensité nez</span><b>${nose?nose.toFixed(1)+'/5':'—'}</b></div><div><span>🍋 Acidité</span><b>${acid?acid.toFixed(1)+'/5':'—'}</b></div><div><span>💪 Corps</span><b>${body?body.toFixed(1)+'/5':'—'}</b></div></div>
+ <div class="discovery-live-aromas"><b>👃 Arômes qui ressortent</b>${aromas.length?`<div class="chips">${aromas.map(([x,n])=>`<span class="chip static">${esc(x)} · ${n}</span>`).join('')}</div>`:`<p class="muted">Les réponses apparaîtront ici pendant la dégustation.</p>`}</div>
+ <p class="small muted">Ces données servent à lancer la discussion : ce sont des perceptions du groupe, pas des bonnes ou mauvaises réponses.</p></div>`;
+}
+
 async function renderHostTasting(){
  const [ws,ps]=await Promise.all([getBlindWines(),getPlayers()]);
  const w=ws[game.current];if(!w)return;
@@ -212,14 +247,20 @@ async function renderHostTasting(){
  const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
 
  if(game.experience_mode==="discovery"){
-   const d=await getDiscoveryWine(w.id);
+   const [d,secretR,liveR]=await Promise.all([
+     getDiscoveryWine(w.id),
+     supabaseClient.from("wine_secrets").select("host_note").eq("wine_id",w.id).maybeSingle(),
+     supabaseClient.from("answers").select("scores,aromas,note,discovery_step,quiz_choice,done").eq("game_id",game.id).eq("wine_id",w.id)
+   ]);
+   const live=liveR.data||[], guide=discoveryHostGuide(d);
+   const privateNote=secretR.data?.host_note||'';
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 DÉCOUVERTE</span></header>
    <div class="card hero"><div class=emoji>🎓</div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span><h1>${esc(d?.name||"Parcours guidé")}</h1>
    <p class=muted>${d?`${esc(regionLabel(d.region))} · ${esc((d.grapes||[]).join(" / "))}`:"Dégustation pédagogique en cours"}</p>
-   ${d?.learning_goal?`<div class="discovery-host-goal"><b>🎯 Objectif :</b> ${esc(discoveryGoalPreset(d.learning_goal)?.label||d.learning_goal)}</div>`:""}
-   <p><b>${answered}</b> / ${total} participants ont terminé le parcours.</p>
-   <div class=notice>Découverte = observer → sentir → goûter → comprendre. Aucun classement de connaissance.</div>
-   <button type="button" class="btn gold" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;
+   ${d?.learning_goal?`<div class="discovery-host-goal"><b>🎯 Objectif :</b> ${esc(discoveryGoalPreset(d.learning_goal)?.label||d.learning_goal)}</div>`:""}</div>
+   <div class="card facilitator-card"><span class="pill">🎤 COPILOTE CAVISTE · PRIVÉ</span><h2>Fais parler le groupe avant d'expliquer</h2><div class="facilitator-step"><b>1 · Question à lancer</b><p>${esc(guide.ask)}</p></div><div class="facilitator-step"><b>2 · Puis à révéler</b><p>${esc(guide.reveal)}</p></div>${privateNote?`<div class="facilitator-note"><b>📝 Ta note</b><p>${esc(privateNote)}</p></div>`:''}</div>
+   ${discoveryLiveDashboard(live,total)}
+   <div class="card sticky"><button type="button" class="btn gold" style="width:100%" onclick="revealWine()">🎓 Afficher le bilan du verre</button></div>`;
    return;
  }
 

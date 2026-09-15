@@ -1367,3 +1367,12 @@ select[data-quiz-correct]:disabled{
   background:var(--wine-soft);
   color:var(--wine-dark);
 }
+
+/* V3.7.0 — Discovery facilitator experience */
+.discovery-question-type{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface-soft);display:grid;gap:5px}
+.discovery-question-type>span{font-size:.72rem;font-weight:800;letter-spacing:.08em}.discovery-question-type>b{font-size:1rem}.discovery-question-type>small{color:var(--muted);line-height:1.45}
+.discovery-question-type.perception>span{color:#c996ff}.discovery-question-type.observation>span{color:#76b9ff}.discovery-question-type.knowledge>span{color:var(--gold)}
+.host-private-note{border-top:1px solid var(--line);padding-top:14px;margin-top:6px}.host-private-note label{color:var(--gold)}
+.facilitator-card{border-color:rgba(212,175,55,.35)}.facilitator-card h2{margin-top:10px}.facilitator-step,.facilitator-note{padding:12px 14px;border-radius:14px;background:var(--surface-soft);margin-top:10px}.facilitator-step p,.facilitator-note p{margin:6px 0 0;line-height:1.5}.facilitator-note{border-left:3px solid var(--gold)}
+.discovery-live-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.discovery-live-head h2{margin:8px 0}.discovery-stage-live{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0}.discovery-stage-live>div,.discovery-live-grid>div{background:var(--surface-soft);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}.discovery-stage-live span,.discovery-live-grid span{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px}.discovery-stage-live b,.discovery-live-grid b{font-size:1.05rem}.discovery-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.discovery-live-aromas{margin-top:14px}.discovery-live-aromas .chips{margin-top:8px}.discovery-compare{margin-top:14px}.discovery-compare .row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:9px 0;border-bottom:1px solid var(--line)}.discovery-compare .row:last-child{border-bottom:0}.discovery-compare .row small{grid-column:1/-1;color:var(--muted)}
+@media(max-width:600px){.discovery-stage-live{grid-template-columns:repeat(2,1fr)}.discovery-live-grid{grid-template-columns:1fr}.discovery-live-head{align-items:center}}

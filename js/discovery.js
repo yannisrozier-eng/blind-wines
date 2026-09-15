@@ -96,7 +96,22 @@ async function chooseDiscoveryQuiz(wineId,index){
 
 function sensoryLabel(v){return v?`${v}/5`:"—"}
 
-function renderDiscoveryJourney(w,a,d,feedback=null){
+function discoveryQuestionType(type,title,text){
+ const meta={perception:['💭','PERCEPTION'],observation:['👀','OBSERVATION'],knowledge:['🧠','CONNAISSANCE']}[type]||['🎓','DÉCOUVERTE'];
+ return `<div class="discovery-question-type ${type}"><span>${meta[0]} ${meta[1]}</span><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
+}
+function discoveryComparisonHtml(current,previous){
+ if(!previous)return '';
+ const rows=[['🍋 Acidité','acid'],['💪 Corps','body'],['⏱️ Longueur','finish']].map(([label,key])=>{
+   const a=Number(current.scores?.[key]||0),b=Number(previous.scores?.[key]||0);
+   if(!a||!b)return '';
+   const verdict=a===b?'≈ identique':a>b?'↑ plus marqué':'↓ moins marqué';
+   return `<div class="row"><span>${label}</span><b>${verdict}</b><small>Vin précédent ${b}/5 → ce vin ${a}/5</small></div>`;
+ }).join('');
+ return rows?`<div class="learning-card discovery-compare"><b>⚖️ Compare avec le vin précédent</b><p class="muted">La comparaison aide ton palais à créer des repères.</p>${rows}</div>`:'';
+}
+
+function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
  const step=Math.max(0,Math.min(4,Number(a.discovery_step||0)));
  const e=discoveryDefaults(d);
  if(feedback){
@@ -113,20 +128,20 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
    <div class=discovery-nav><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
  }
  if(step===1){
-   body=`<div class=discovery-stage><div class=emoji>👁️</div><h2>1. Observe</h2><p class=muted>Regarde le vin avant de le sentir.</p>${discoveryFocusHtml(e.goal,1)}
+   body=`<div class=discovery-stage><div class=emoji>👁️</div><h2>1. Observe</h2><p class=muted>Regarde le vin avant de le sentir.</p>${discoveryQuestionType("observation","Où situes-tu ce vin ?","Il n’y a pas de note juste : positionne simplement ton ressenti sur l’échelle.")}${discoveryFocusHtml(e.goal,1)}
    ${metric("Intensité visuelle","look",a)}
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.eye_tip)}</div>
    <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',0)">← Retour</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',2)">Passer au nez →</button></div></div>`;
  }
  if(step===2){
-   body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>${discoveryFocusHtml(e.goal,2)}
+   body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>${discoveryQuestionType("perception","Qu’est-ce que TOI tu sens ?","Aucune mauvaise réponse ici. Choisis les familles qui te viennent naturellement.")}${discoveryFocusHtml(e.goal,2)}
    ${metric("Intensité aromatique","nose",a)}
    <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.nose_tip)}</div>
    <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
  }
  if(step===3){
-   body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>${discoveryFocusHtml(e.goal,3)}
+   body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>${discoveryQuestionType("observation","Décris la structure","Tes réponses serviront à comparer tes sensations avec celles du groupe.")}${discoveryFocusHtml(e.goal,3)}
    ${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
    <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
    <div class=edu-tip><strong>💡 Repère</strong>${esc(e.palate_tip)}</div>
@@ -137,10 +152,12 @@ function renderDiscoveryJourney(w,a,d,feedback=null){
    const answered=choice!==null;
    const correct=answered&&choice===e.correct;
    body=`<div class=discovery-stage><div class=emoji>🧠</div><h2>4. Comprendre</h2>
+   ${discoveryQuestionType("knowledge","Teste ce que tu viens de comprendre","Ici seulement, il existe une bonne réponse. L’explication compte plus que le score.")}
    <div class=learning-card><b>Mini-quiz</b><div style="margin-top:8px">${esc(e.question)}</div></div>
    <div class=quiz-options>${e.options.slice(0,4).map((opt,i)=>`<button type="button" class="quiz-option ${choice===i?"selected":""} ${answered&&i===e.correct?"correct":""} ${answered&&choice===i&&i!==e.correct?"wrong":""}" ${answered?"disabled":""} onclick="chooseDiscoveryQuiz('${w.id}',${i})">${String.fromCharCode(65+i)}. ${esc(opt)}</button>`).join("")}</div>
    ${answered?`<div class=edu-tip><strong>${correct?"✅ Bien vu !":"💡 À retenir"}</strong>${esc(e.explanation)}</div>`:`<p class=muted>Choisis une réponse pour afficher l’explication.</p>`}
    ${e.learning_note?`<div class=learning-card><b>La leçon de ce verre</b><div>${esc(e.learning_note)}</div></div>`:""}
+   ${discoveryComparisonHtml(a,previousAnswer)}
    <div class=discovery-summary>
     <div class=row><span>👁️ Intensité visuelle</span><b>${sensoryLabel(a.scores?.look)}</b></div>
     <div class=row><span>👃 Intensité aromatique</span><b>${sensoryLabel(a.scores?.nose)}</b></div>
@@ -160,7 +177,7 @@ async function renderHostDiscoveryReveal(){
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
  const [rvR,ansR]=await Promise.all([
    supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
-   supabaseClient.from("answers").select("note,quiz_choice").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
+   supabaseClient.from("answers").select("note,quiz_choice,scores,aromas").eq("game_id",game.id).eq("wine_id",w.id).eq("done",true)
  ]);
  if(rvR.error||ansR.error)return toast((rvR.error||ansR.error).message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
@@ -180,9 +197,11 @@ async function renderHostDiscoveryReveal(){
 async function renderPlayerDiscoveryReveal(){
  const pos=game.current;
  const ws=await getBlindWines(),w=ws[pos];if(!w)return;
- const [rvR,a]=await Promise.all([
+ const prevWine=pos>0?ws[pos-1]:null;
+ const [rvR,a,prevA]=await Promise.all([
    supabaseClient.from("wine_reveals").select("*").eq("wine_id",w.id).maybeSingle(),
-   getAnswer(w.id,true)
+   getAnswer(w.id,true),
+   prevWine?getAnswer(prevWine.id,true):Promise.resolve(null)
  ]);
  if(rvR.error)return toast(rvR.error.message);
  if(game.status!=="tasting"||game.phase!=="revealed"||game.current!==pos)return requestRoute();
@@ -195,6 +214,7 @@ async function renderPlayerDiscoveryReveal(){
  document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 BILAN</span></header>
  <div class="card hero"><div class=emoji>${ICON[w.type]}</div><h1>${esc(rv.name)}</h1><p>${esc(regionLabel(rv.region))} · ${esc((rv.grapes||[]).join(" / "))}</p></div>
  ${edu.learning_note?`<div class=card><h2>💡 À retenir</h2><p>${esc(edu.learning_note)}</p></div>`:""}
+ ${prevA?`<div class=card><h2>⚖️ Mets ce vin en perspective</h2>${discoveryComparisonHtml(a,prevA)}</div>`:""}
  <div class=card><h2>${!answered?"⏱️ Réponse non validée":ok?"✅ Bien vu":"🧠 Correction"}</h2><p><b>${esc(edu.question)}</b></p>${answered?`<p>Bonne réponse : <b>${esc(opts[correct]||"—")}</b></p>`:`<p class=muted>Tu n’avais pas terminé ce verre avant la révélation.</p>`}<div class=notice>${esc(edu.explanation)}</div></div>
  <div class=card><p class=muted>L’organisateur lancera le prochain vin.</p></div>`;
 }

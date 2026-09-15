@@ -266,7 +266,7 @@ async function getBlindWines(force=false){
 async function getHostWines(){
  const [w,s]=await Promise.all([
   supabaseClient.from("wines").select("id,game_id,position,type").eq("game_id",game.id).order("position"),
-  supabaseClient.from("wine_secrets").select("wine_id,game_id,name,price,region,grapes,learning_goal,learning_note,hint1,hint2,eye_tip,nose_tip,palate_tip,quiz_question,quiz_options,quiz_correct,quiz_explanation").eq("game_id",game.id)
+  supabaseClient.from("wine_secrets").select("wine_id,game_id,name,price,region,grapes,learning_goal,learning_note,host_note,hint1,hint2,eye_tip,nose_tip,palate_tip,quiz_question,quiz_options,quiz_correct,quiz_explanation").eq("game_id",game.id)
  ]);
  if(w.error||s.error){toast((w.error||s.error).message);return []}
  const map=new Map((s.data||[]).map(x=>[x.wine_id,x]));
