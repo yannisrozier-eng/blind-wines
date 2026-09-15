@@ -1,5 +1,5 @@
-const CACHE="blind-wine-v400-blind-gameplay";
-const SHELL=["./","./index.html","./config.js","./manifest.webmanifest","./styles.css","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png","./og-preview.jpg","./js/core.js","./js/auth.js","./js/game.js","./js/discovery.js","./js/challenge.js","./js/player.js","./js/reveal.js","./js/host.js","./js/history.js","./js/main.js"];
+const CACHE="blind-wine-v410-blind-atlas";
+const SHELL=["./","./index.html","./config.js","./manifest.webmanifest","./styles.css","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png","./og-preview.jpg","./js/core.js","./js/blind-guide.js","./js/auth.js","./js/game.js","./js/discovery.js","./js/challenge.js","./js/player.js","./js/reveal.js","./js/host.js","./js/history.js","./js/main.js"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });

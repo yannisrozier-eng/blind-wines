@@ -167,7 +167,7 @@ function renderPlayerBlindTasting(w,a,ws){
  <div class="card player-sheet blind-player-sheet">
    <div class="blind-play-head"><div><span class="blind-live-pill">● MANCHE ${game.current+1}</span><h1>Quel vin se cache ici ?</h1><p class=muted>Construis ton intuition, puis engage tes 3 paris.</p></div><div class="blind-points-orbit"><b>11</b><span>PTS</span></div></div>
    ${blindGuessForm(w,a)}
-   ${regionGrapeGuideHtml()}
+   ${blindWineAtlasButtonHtml()}
    <div class="card sticky player-action blind-lock-bar"><div><small>Quand tu es sûr de toi</small><b>Prix · Région · Cépages</b></div><button type="button" class="btn" onclick="requestBlindLock('${w.id}')">🔒 Verrouiller mon pari</button></div>
  </div>`;
 }
