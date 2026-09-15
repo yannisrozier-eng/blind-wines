@@ -30,11 +30,16 @@ async function renderPlayerTasting(){
  }
 
  if(game.experience_mode==="discovery"){
-   const discovery=await getDiscoveryWine(w.id);
-   const feedback=Number.isInteger(a.quiz_choice)?await getDiscoveryQuizFeedback(w.id):null;
+   const [discovery,feedback,doneR,revealR]=await Promise.all([
+    getDiscoveryWine(w.id),
+    Number.isInteger(a.quiz_choice)?getDiscoveryQuizFeedback(w.id):Promise.resolve(null),
+    supabaseClient.from("answers").select("*").eq("game_id",game.id).eq("user_id",user.id).eq("done",true),
+    supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id)
+   ]);
    const previousWine=game.current>0?ws[game.current-1]:null;
    const previousAnswer=previousWine?await getAnswer(previousWine.id,true):null;
-   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>${renderDiscoveryJourney(w,a,discovery,feedback,previousAnswer)}`;
+   const sessionProgress=discoveryProgressSummary(doneR.data||[],revealR.data||[],ws);
+   document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>${esc(player.name)}</span></header>${renderDiscoveryJourney(w,a,discovery,feedback,previousAnswer,sessionProgress,ws.length)}`;
    return;
  }
 

@@ -206,7 +206,67 @@ async function setDiscoveryComparison(wineId,metric,choice,button=null){
  if(!saved)renderPlayerTasting();
 }
 
-function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
+
+function discoverySensoryScaleMeta(key){
+ const map={
+  look:{icon:'👁️',low:'Pâle',high:'Intense',labels:['Très légère','Légère','Moyenne','Marquée','Très marquée']},
+  nose:{icon:'👃',low:'Discret',high:'Expressif',labels:['Très discret','Discret','Présent','Expressif','Très expressif']},
+  acid:{icon:'🍋',low:'Souple',high:'Très vif',labels:['Très souple','Souple','Équilibré','Vif','Très vif']},
+  sweet:{icon:'🍯',low:'Très sec',high:'Doux',labels:['Très sec','Sec','Tendre','Doux','Très doux']},
+  body:{icon:'💪',low:'Léger',high:'Puissant',labels:['Très léger','Léger','Intermédiaire','Ample','Puissant']},
+  finish:{icon:'⏱️',low:'Courte',high:'Longue',labels:['Très courte','Courte','Moyenne','Longue','Très longue']}
+ };
+ return map[key]||{icon:'🎓',low:'Faible',high:'Fort',labels:['Très faible','Faible','Moyen','Fort','Très fort']};
+}
+
+function discoveryMicroReveal(key,value,tip=''){
+ if(!value)return '';
+ const meta=discoverySensoryScaleMeta(key),label=meta.labels[Math.max(0,Math.min(4,Number(value)-1))];
+ return `<div class="discovery-micro-reveal"><span>✨ TON REPÈRE</span><b>${meta.icon} ${esc(label)}</b>${tip?`<small>${esc(tip)}</small>`:''}</div>`;
+}
+
+function discoverySensoryMetric(label,key,a,tip=''){
+ const meta=discoverySensoryScaleMeta(key),value=Number(a.scores?.[key]||0);
+ return `<div class="section discovery-sensory-metric"><div class="sensory-head"><h3>${label}</h3>${value?`<span>${value}/5 · ${esc(meta.labels[value-1])}</span>`:''}</div>
+  <div class="sensory-anchors"><small>${esc(meta.low)}</small><small>${esc(meta.high)}</small></div>
+  <div class="scale discovery-scale">${[1,2,3,4,5].map(n=>`<button type="button" aria-label="${esc(meta.labels[n-1])}" title="${esc(meta.labels[n-1])}" class="${value===n?'sel':''}" onclick="setDiscoveryScore('${a.wine_id||''}','${key}',${n})"><span>${n}</span><small>${esc(meta.labels[n-1])}</small></button>`).join('')}</div>
+  ${discoveryMicroReveal(key,value,tip)}
+ </div>`;
+}
+
+async function setDiscoveryScore(wineId,key,n){
+ if(game?.experience_mode!=='discovery')return;
+ const a=await getAnswer(wineId),scores={...(a.scores||{}),[key]:n};
+ const saved=await upsertAnswer(wineId,{scores});
+ if(saved)renderPlayerTasting();
+}
+
+function discoveryMissionText(goal){
+ const id=goal?.id||'';
+ const map={
+  visual:'Regarde d’abord le verre sans chercher à deviner. Ta mission : repérer ce que la robe peut raconter.',
+  aromas:'Sens une première fois sans réfléchir, puis cherche seulement une grande famille aromatique.',
+  acidity:'Après une gorgée, attends quelques secondes et observe si ta bouche se remet à saliver.',
+  tannins:'Après avoir goûté, passe la langue sur tes gencives et repère une éventuelle sensation d’assèchement.',
+  sweetness:'Distingue la vraie douceur en bouche d’une simple impression de fruit mûr.',
+  body:'Demande-toi si le vin paraît léger, intermédiaire ou ample quand il occupe la bouche.',
+  length:'Après la gorgée, ne reprends pas de vin tout de suite : observe combien de temps les sensations restent.',
+  grape:'Cherche une combinaison de sensations plutôt qu’un arôme unique : nez, acidité, matière et longueur.',
+  region:'Relie le style du vin à son origine : fraîcheur, maturité, structure et expression aromatique.',
+  terroir:'Cherche ce qui évoque un style plus frais/tendu ou plus mûr/solaire, puis relie-le au contexte du vin.',
+  oak:'Cherche des indices de texture et d’arômes toastés, épicés ou vanillés sans forcer la réponse.',
+  age:'Observe si les arômes paraissent surtout frais et primaires ou plus évolués et complexes.'
+ };
+ return map[id]||'Goûte sans chercher la bonne réponse : observe une sensation précise et mets des mots dessus.';
+}
+
+function discoverySessionProgressHtml(progress,currentIndex,totalWines){
+ const completed=Number(progress?.total||0),notions=Number(progress?.notions?.length||0),quizRate=completed?Math.round((progress.correct||0)/completed*100):null;
+ const percent=Math.max(0,Math.min(100,Math.round((currentIndex/Math.max(1,totalWines))*100)));
+ return `<div class="discovery-session-progress"><div class="session-progress-head"><span>TON PARCOURS</span><b>${currentIndex+1}/${totalWines} verres</b></div><div class="session-progress-track"><i style="width:${percent}%"></i></div><div class="session-progress-stats"><span>🎓 ${notions} notion${notions>1?'s':''} explorée${notions>1?'s':''}</span><span>${quizRate==null?'🧠 Premier quiz à venir':`🧠 ${quizRate}% aux mini-quiz`}</span></div></div>`;
+}
+
+function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null,sessionProgress=null,totalWines=null){
  const step=Math.max(0,Math.min(4,Number(a.discovery_step||0)));
  const e=discoveryDefaults(d);
  if(feedback){
@@ -218,29 +278,28 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
  const identity=`${esc(regionLabel(d?.region)||"")} ${d?.grapes?.length?"· "+esc(d.grapes.join(" / ")):""} ${d?.price?`· ${Number(d.price).toFixed(2)} €`:""}`;
  let body="";
  if(step===0){
-   body=`<div class=discovery-stage>${discoveryThemeSummary()}<div class=emoji>🎓</div><h2>${title}</h2><p class=muted>${identity}</p>
-   ${d?.learning_goal?`<div class="learning-card discovery-goal-player"><b>${e.goal?.icon||'🎓'} Ce verre va te faire découvrir</b><div>${esc(e.goal?.label||d.learning_goal)}</div>${e.goal?.short?`<small>${esc(e.goal.short)}</small>`:''}</div>`:""}
-   <div class=edu-tip><strong>Comment ça marche ?</strong>Tu vas avancer en 4 temps : observer, sentir, goûter puis comprendre. Il n’y a pas de “mauvaise” sensation : le but est d’apprendre à décrire ce que tu perçois.</div>
-   <div class=discovery-nav><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',1)">Commencer par l’œil →</button></div></div>`;
+   body=`<div class=discovery-stage>${discoveryThemeSummary()}${discoverySessionProgressHtml(sessionProgress,game.current,totalWines||game.wine_count||1)}<div class="discovery-mission"><span class="mission-kicker">MISSION DU VERRE</span><div class=emoji>${e.goal?.icon||'🎓'}</div><h2>${esc(e.goal?.label||'Découvrir ce vin')}</h2><p>${esc(discoveryMissionText(e.goal))}</p><div class="mission-wine"><b>${title}</b><small>${identity}</small></div></div>
+   <div class=edu-tip><strong>Un seul objectif</strong>Ne cherche pas à tout analyser parfaitement. Concentre-toi sur la sensation proposée : l’app t’expliquera ce que tu viens de ressentir au fur et à mesure.</div>
+   <div class=discovery-nav><button type="button" class="btn discovery-start-btn" onclick="setDiscoveryStep('${w.id}',1)">🍷 Je suis prêt, je goûte</button></div></div>`;
  }
  if(step===1){
    body=`<div class=discovery-stage><div class=emoji>👁️</div><h2>1. Observe</h2><p class=muted>Regarde le vin avant de le sentir.</p>${discoveryQuestionType("observation","Où situes-tu ce vin ?","Il n’y a pas de note juste : positionne simplement ton ressenti sur l’échelle.")}${discoveryFocusHtml(e.goal,1)}
-   ${metric("Intensité visuelle","look",a)}
-   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.eye_tip)}</div>
+   ${discoverySensoryMetric("Intensité visuelle","look",a,e.eye_tip)}
+   ${!a.scores?.look?`<div class=edu-tip><strong>💡 Avant de répondre</strong>${esc(e.eye_tip)}</div>`:''}
    <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',0)">← Retour</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',2)">Passer au nez →</button></div></div>`;
  }
  if(step===2){
    body=`<div class=discovery-stage><div class=emoji>👃</div><h2>2. Sens</h2><p class=muted>Choisis les familles d’arômes qui te parlent le plus.</p>${discoveryQuestionType("perception","Qu’est-ce que TOI tu sens ?","Aucune mauvaise réponse ici. Choisis les familles qui te viennent naturellement.")}${discoveryFocusHtml(e.goal,2)}
-   ${metric("Intensité aromatique","nose",a)}
+   ${discoverySensoryMetric("Intensité aromatique","nose",a,e.nose_tip)}
    <div class=section><h3>Arômes perçus</h3><div class=chips>${AROMAS[w.type].map(x=>`<button type="button" class="chip ${(a.aromas||[]).includes(x)?"sel":""}" onclick="toggleAroma('${w.id}',decodeURIComponent('${encodeURIComponent(x)}'),this)">${esc(x)}</button>`).join("")}</div></div>
-   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.nose_tip)}</div>
+   ${!a.scores?.nose?`<div class=edu-tip><strong>💡 Avant de répondre</strong>${esc(e.nose_tip)}</div>`:''}
    <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',1)">← L’œil</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',3)">Passer à la bouche →</button></div></div>`;
  }
  if(step===3){
    body=`<div class=discovery-stage><div class=emoji>👄</div><h2>3. Goûte</h2><p class=muted>Concentre-toi sur la structure du vin.</p>${discoveryQuestionType("observation","Décris la structure","Tes réponses serviront à comparer tes sensations avec celles du groupe.")}${discoveryFocusHtml(e.goal,3)}
-   ${metric("🍋 Acidité","acid",a)}${metric("🍯 Douceur / sucrosité","sweet",a)}${metric("💪 Corps / puissance","body",a)}${metric("⏱️ Persistance","finish",a)}
+   ${discoverySensoryMetric("🍋 Acidité","acid",a,e.goal?.id==='acidity'?e.palate_tip:'Observe la fraîcheur et la salivation.')}${discoverySensoryMetric("🍯 Douceur / sucrosité","sweet",a,e.goal?.id==='sweetness'?e.palate_tip:'Distingue le sucre réel du fruit et de la rondeur.')}${discoverySensoryMetric("💪 Corps / puissance","body",a,e.goal?.id==='body'?e.palate_tip:'Observe le poids et le volume du vin en bouche.')}${discoverySensoryMetric("⏱️ Persistance","finish",a,e.goal?.id==='length'?e.palate_tip:'Attends quelques secondes après la gorgée et observe ce qui reste.')}
    <div class=section><h3>❤️ Ton plaisir</h3><div class="scale ten">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button type="button" class="${a.note===n?"sel":""}" onclick="setAnswerChoice('${w.id}','note',${n},this)">${n}</button>`).join("")}</div></div>
-   <div class=edu-tip><strong>💡 Repère</strong>${esc(e.palate_tip)}</div>
+   ${![a.scores?.acid,a.scores?.sweet,a.scores?.body,a.scores?.finish].some(Boolean)?`<div class=edu-tip><strong>💡 Avant de répondre</strong>${esc(e.palate_tip)}</div>`:''}
    <div class=discovery-nav><button type="button" class="btn secondary" onclick="setDiscoveryStep('${w.id}',2)">← Le nez</button><button type="button" class=btn onclick="setDiscoveryStep('${w.id}',4)">Comprendre →</button></div></div>`;
  }
  if(step===4){
@@ -265,7 +324,7 @@ function renderDiscoveryJourney(w,a,d,feedback=null,previousAnswer=null){
    ${!a.note?`<p class=muted>Ajoute ta note de plaisir avant de terminer.</p>`:''}${!answered?`<p class=muted>Réponds au mini-quiz avant de terminer.</p>`:''}${previousAnswer&&!a.discovery_compare?.choice?`<p class=muted>Compare ce vin avec le précédent avant de terminer.</p>`:''}
    </div>`;
  }
- return `<div class="card player-sheet discovery-player-sheet"><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${discoveryProgress(step)}${body}</div>${guideHtml()}`;
+ return `<div class="card player-sheet discovery-player-sheet"><span class=pill>VIN ${game.current+1} · 🎓 Découverte</span>${step>0?discoverySessionProgressHtml(sessionProgress,game.current,totalWines||game.wine_count||1):''}${discoveryProgress(step)}${body}</div>${guideHtml()}`;
 }
 
 async function renderHostDiscoveryReveal(){
