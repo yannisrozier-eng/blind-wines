@@ -2,6 +2,7 @@
 'use strict';
 
 async function renderPlayerLobby(){
+ if(typeof closeBlindWineAtlas==="function")closeBlindWineAtlas();
  const ps=await getPlayers();
  document.getElementById("app").innerHTML=`<div class="card hero"><div class=emoji>${modeInfo().icon}</div><span class=pill>PARTIE ${esc(game.code)} · ${modeBadge()}</span><h1>Salut ${esc(player.name)} !</h1><p>Tu es connecté.</p>
  ${game.experience_mode==='discovery'?discoveryThemeSummary():''}<div class=notice>En attente du lancement de la dégustation…</div><h3>Joueurs</h3><div class=chips>${ps.filter(p=>p.user_id!==game.host_id).map(p=>`<span class=chip>👤 ${esc(p.name)}</span>`).join("")}</div></div>`;
@@ -335,6 +336,7 @@ function blindPointLine(icon,label,score,max,answer,truth,delay){
 }
 
 async function renderPlayerReveal(){
+ if(typeof closeBlindWineAtlas==="function")closeBlindWineAtlas();
  const rv=await getCurrentReveal();
  if(!rv){
    document.getElementById("app").innerHTML=`<div class="card hero"><h1>Révélation…</h1><p class=muted>Chargement du vin.</p></div>`;
@@ -371,6 +373,7 @@ async function renderPlayerReveal(){
 }
 
 async function renderPlayerFinished(){
+ if(typeof closeBlindWineAtlas==="function")closeBlindWineAtlas();
  const [ws,rr,ar]=await Promise.all([
   getBlindWines(),
   supabaseClient.from("wine_reveals").select("*").eq("game_id",game.id),

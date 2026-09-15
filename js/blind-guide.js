@@ -42,6 +42,7 @@ const BLIND_GRAPE_PROFILES=[
 ];
 
 let blindAtlasState={tab:'map',region:null,grape:null,compare:[]};
+let blindAtlasReturnFocus=null;
 
 function blindWineAtlasButtonHtml(){
  return `<button type="button" class="blind-atlas-launch" onclick="openBlindWineAtlas()"><span>🗺️</span><div><b>Atlas du blind</b><small>Carte de France · régions · cépages · comparer</small></div><span class="blind-atlas-launch-arrow">→</span></button>`;
@@ -112,12 +113,23 @@ function renderBlindAtlasModal(){
 
 function openBlindWineAtlas(tab='map'){
  blindAtlasState.tab=tab;
+ blindAtlasReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
  if(document.getElementById('blind-atlas-overlay'))return renderBlindAtlasModal();
  const overlay=document.createElement('div');overlay.id='blind-atlas-overlay';overlay.className='blind-atlas-overlay';
  overlay.innerHTML=`<section class="blind-atlas-modal" role="dialog" aria-modal="true" aria-label="Atlas du blind"><header class="blind-atlas-head"><div><small>AIDE GÉNÉRALE · AUCUN INDICE SUR CE VIN</small><h2>🗺️ Atlas du blind</h2></div><button type="button" onclick="closeBlindWineAtlas()" aria-label="Fermer">×</button></header><nav class="blind-atlas-tabs"></nav><div class="blind-atlas-content"></div></section>`;
  overlay.addEventListener('click',e=>{if(e.target===overlay)closeBlindWineAtlas()});document.body.appendChild(overlay);document.body.classList.add('blind-atlas-open');renderBlindAtlasModal();
+ requestAnimationFrame(()=>overlay.querySelector('.blind-atlas-head button')?.focus());
 }
-function closeBlindWineAtlas(){document.getElementById('blind-atlas-overlay')?.remove();document.body.classList.remove('blind-atlas-open')}
+function closeBlindWineAtlas(){
+ const overlay=document.getElementById('blind-atlas-overlay');
+ if(!overlay)return;
+ overlay.remove();document.body.classList.remove('blind-atlas-open');
+ const target=blindAtlasReturnFocus;blindAtlasReturnFocus=null;
+ if(target&&document.contains(target))requestAnimationFrame(()=>target.focus());
+}
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&document.getElementById('blind-atlas-overlay'))closeBlindWineAtlas();
+});
 function switchBlindAtlasTab(tab){blindAtlasState.tab=tab;renderBlindAtlasModal()}
 function selectBlindAtlasRegion(id,fromList=false){blindAtlasState.region=id;if(fromList)blindAtlasState.tab='regions';renderBlindAtlasModal();if(fromList)setTimeout(()=>document.getElementById('blind-atlas-detail')?.scrollIntoView({behavior:'smooth',block:'start'}),0)}
 function selectBlindAtlasGrape(name){blindAtlasState.grape=name;renderBlindAtlasModal()}
