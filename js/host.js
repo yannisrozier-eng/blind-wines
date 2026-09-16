@@ -371,7 +371,8 @@ async function renderHostResults(){
     <div class="card hero">${discoveryThemeSummary()}<div class=emoji>🎓</div><h1>Soirée Découverte terminée</h1><p class=muted>${ps.length} participant${ps.length>1?"s":""} · ${ws.length} vins explorés</p></div>
     <div class=card><h2>Ce qu’a préféré le groupe</h2>${wineStats.sort((a,b)=>b.avg-a.avg).map(x=>`<div class=wine-row><b>${ICON[x.w.type]} ${esc(x.rv.name)}</b><span class=pill>${x.count?x.avg.toFixed(1):"—"}/10</span><p class=muted>${esc(x.rv.learning_note||"")}</p></div>`).join("")}</div>
     <div class=card><h2>🧠 Compréhension du groupe</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><div class="notion-grid">${groupNotions.map(n=>`<div class="notion-card ${n.rate>=.67?'mastered':'learning'}"><span>${n.icon}</span><div><b>${esc(n.label)}</b><small>${Math.round(n.rate*100)}% compris · ${n.total} réponse${n.total>1?'s':''}</small></div></div>`).join('')}</div><p class=muted>Pas de classement compétitif : ces données servent au caviste à voir les notions acquises et celles à retravailler.</p></div>
-    <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
+    <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
+   ensurePostEventEmail().catch(()=>{});
    return;
  }
 
@@ -410,7 +411,8 @@ async function renderHostResults(){
      <div class=stat><span>💡 Indices moyens du groupe</span><strong>${groupHints.toFixed(1)}</strong><span class=muted>par réponse</span></div>
    </div></div>
    <div class=card><h2>Classement complet</h2><table><tr><th>#</th><th>Joueur</th><th>Final</th><th>Brut</th><th>Indices</th><th>Efficacité</th></tr>${rows.map(r=>`<tr><td>${r.rank}</td><td>${esc(r.name)}</td><td><b>${r.adjusted}</b></td><td>${r.raw}</td><td>${r.hints}</td><td>${Math.round(r.efficiency*100)}%</td></tr>`).join("")}</table></div>
-   <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Statistiques Challenge</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
+   <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Statistiques Challenge</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
+   ensurePostEventEmail().catch(()=>{});
    return;
  }
 
@@ -466,9 +468,10 @@ async function renderHostResults(){
   <div class=stat><span>❤️ Meilleur goût du groupe</span><strong>${esc(bestTaste)}</strong><span class=muted>Notes les plus proches du groupe</span></div>
  </div></div>
  <div class=card><h2>❤️ Favori de la soirée</h2>${favorite?`<div class=wine-row><div class=wine-head><b>${ICON[favorite.w.type]} ${esc(favorite.rv.name)}</b><span class=pill>${favorite.avg.toFixed(1)}/10</span></div><p>${esc(regionLabel(favorite.rv.region))} · ${esc((favorite.rv.grapes||[]).join(" / "))} · ${Number(favorite.rv.price).toFixed(2)} €</p></div>`:"<p class=muted>Aucune note.</p>"}</div>
- <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button></div>
+ <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button></div>
  <div class=card><button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>
  <div class=card><h2>Classement dégustateurs</h2><table><tr><th>#</th><th>Joueur</th><th>Total</th><th>Prix</th><th>Région</th><th>Cépages</th></tr>${rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}</td><td><b>${x.score}</b></td><td>${x.pricePts}</td><td>${x.regionPts}</td><td>${x.grapePts}</td></tr>`).join("")}</table></div>`;
+ ensurePostEventEmail().catch(()=>{});
 }
 
 async function renderHostStats(){

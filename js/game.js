@@ -13,7 +13,7 @@ async function restoreSession(){
  // Le rôle ne vient jamais de localStorage : l'identité serveur fait foi.
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
-   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
+   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).eq("user_id",user.id).maybeSingle();
    if(p.error||!p.data){clearSession();return false}
    player=p.data;
  }else player=null;
@@ -113,6 +113,8 @@ function home(){
   </div>
   <div class="card"><h2>Rejoindre une soirée</h2><label>Code</label><input id="joinCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" value="${esc(preset.toUpperCase())}">
    <p class=muted>Tu participeras sous le nom <b>${esc(pname)}</b>.</p>
+   <label class="commercial-consent"><input id="commercialConsent" type="checkbox"> <span>J’accepte que l’organisateur de cette dégustation reçoive mon email et mes préférences de dégustation afin de pouvoir me recontacter avec des recommandations ou offres liées aux vins.</span></label>
+   <p class="small muted">Facultatif · décoché par défaut. Tu peux participer sans accepter.</p>
    <button type="button" class="btn" style="margin-top:10px;width:100%" onclick="joinGame()">Rejoindre</button></div>
  </div>
  <button type="button" class="btn secondary" style="margin-top:18px" onclick="renderProfile()">📚 Mon historique & mes statistiques</button>
@@ -177,7 +179,8 @@ async function joinGame(){
  const code=document.getElementById("joinCode").value.trim().toUpperCase();
  const name=(profile?.display_name||"").trim();
  if(!code||!name)return toast("Code de partie ou profil incomplet.");
- const r=await supabaseClient.rpc("join_game",{p_code:code,p_name:name});
+ const commercialConsent=Boolean(document.getElementById("commercialConsent")?.checked);
+ const r=await supabaseClient.rpc("join_game",{p_code:code,p_name:name,p_commercial_consent:commercialConsent});
  if(r.error)return toast(r.error.message);
  const row=Array.isArray(r.data)?r.data[0]:r.data;
  if(!row)return toast("Partie introuvable.");
@@ -185,7 +188,7 @@ async function joinGame(){
  wineCache=null;answerCache.clear();
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
-   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
+   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
    if(p.error)return toast(p.error.message);
    player=p.data;
  }else player=null;
@@ -277,7 +280,7 @@ async function getHostWines(){
 }
 
 async function getPlayers(){
- const r=await supabaseClient.from("players").select("id,game_id,user_id,name,created_at").eq("game_id",game.id).order("created_at");
+ const r=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).order("created_at");
  if(r.error){toast(r.error.message);return []}
  return r.data||[];
 }
