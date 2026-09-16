@@ -969,7 +969,7 @@ grant execute on function public.delete_game(uuid) to authenticated;
 
 
 -- ============================================================
--- V4.4.0 — RAPPORT POST-SOIRÉE / OPPORTUNITÉS CAVISTE
+-- V4.5.0 — RAPPORT POST-SOIRÉE / OPPORTUNITÉS CAVISTE (MAIL LOCAL)
 -- ============================================================
 
 alter table public.players add column if not exists commercial_consent boolean not null default false;
@@ -1017,21 +1017,7 @@ $$;
 revoke all on function public.join_game(text,text,boolean) from public;
 grant execute on function public.join_game(text,text,boolean) to authenticated;
 
-create table if not exists public.post_event_reports (
-  game_id uuid primary key references public.games(id) on delete cascade,
-  host_id uuid not null,
-  emailed_at timestamptz,
-  provider_id text,
-  created_at timestamptz not null default now()
-);
-alter table public.post_event_reports enable row level security;
-drop policy if exists post_event_reports_host_select on public.post_event_reports;
-drop policy if exists post_event_reports_host_insert on public.post_event_reports;
-drop policy if exists post_event_reports_host_update on public.post_event_reports;
-create policy post_event_reports_host_select on public.post_event_reports for select to authenticated using(host_id=auth.uid());
-create policy post_event_reports_host_insert on public.post_event_reports for insert to authenticated with check(host_id=auth.uid() and public.is_game_host(game_id));
-create policy post_event_reports_host_update on public.post_event_reports for update to authenticated using(host_id=auth.uid() and public.is_game_host(game_id)) with check(host_id=auth.uid() and public.is_game_host(game_id));
-grant select,insert,update on public.post_event_reports to authenticated;
+-- V4.5 : pas de service d’envoi email serveur. Le rapport ouvre la messagerie locale du caviste.
 
 -- Les emails des participants ne sont jamais exposés via profiles.
 -- Cet RPC ne les révèle qu'à l'hôte d'une partie terminée, et uniquement si le participant

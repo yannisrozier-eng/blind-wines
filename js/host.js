@@ -273,9 +273,12 @@ function discoveryLiveDashboard(rows,total,d=null){
 }
 
 async function renderHostTasting(){
+ const renderSeq=routeSeq;
  const [ws,ps]=await Promise.all([getBlindWines(),getPlayers()]);
+ if(renderSeq!==routeSeq||document.body.dataset.screen!=="game"||role!=="host")return;
  const w=ws[game.current];if(!w)return;
  const r=await supabaseClient.from("answers").select("id",{count:"exact",head:true}).eq("game_id",game.id).eq("wine_id",w.id).eq("done",true);
+ if(renderSeq!==routeSeq||document.body.dataset.screen!=="game"||role!=="host")return;
  const answered=r.count||0,total=Math.max(0,ps.filter(p=>p.user_id!==game.host_id).length);
 
  if(game.experience_mode==="discovery"){
@@ -284,6 +287,7 @@ async function renderHostTasting(){
      supabaseClient.from("wine_secrets").select("host_note").eq("wine_id",w.id).maybeSingle(),
      supabaseClient.from("answers").select("scores,aromas,note,discovery_step,quiz_choice,discovery_compare,done").eq("game_id",game.id).eq("wine_id",w.id)
    ]);
+   if(renderSeq!==routeSeq||document.body.dataset.screen!=="game"||role!=="host")return;
    const live=liveR.data||[], guide=discoveryHostGuide(d);
    const privateNote=secretR.data?.host_note||'';
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🎓 DÉCOUVERTE</span></header>
@@ -302,6 +306,7 @@ async function renderHostTasting(){
    const noHint=done.filter(a=>Number(a.hint_level||0)===0).length;
    const oneHint=done.filter(a=>Number(a.hint_level||0)===1).length;
    const twoHints=done.filter(a=>Number(a.hint_level||0)>=2).length;
+   if(renderSeq!==routeSeq||document.body.dataset.screen!=="game"||role!=="host")return;
    document.getElementById("app").innerHTML=`<header><div class=logo>🍷 <span>BLIND WINE</span></div><span class=pill>🥂 CHALLENGE</span></header>
    <div class="card hero"><div class=emoji>🥂</div><span class=pill>VIN ${game.current+1}/${game.wine_count||ws.length}</span><h1>Le risque est lancé</h1>
    <p><b>${answered}</b> / ${total} joueurs ont verrouillé leur challenge.</p>
@@ -372,7 +377,6 @@ async function renderHostResults(){
     <div class=card><h2>Ce qu’a préféré le groupe</h2>${wineStats.sort((a,b)=>b.avg-a.avg).map(x=>`<div class=wine-row><b>${ICON[x.w.type]} ${esc(x.rv.name)}</b><span class=pill>${x.count?x.avg.toFixed(1):"—"}/10</span><p class=muted>${esc(x.rv.learning_note||"")}</p></div>`).join("")}</div>
     <div class=card><h2>🧠 Compréhension du groupe</h2><p><b>${quizPossible?Math.round(quizTotal/quizPossible*100):0}%</b> de bonnes réponses aux mini-quiz.</p><div class="notion-grid">${groupNotions.map(n=>`<div class="notion-card ${n.rate>=.67?'mastered':'learning'}"><span>${n.icon}</span><div><b>${esc(n.label)}</b><small>${Math.round(n.rate*100)}% compris · ${n.total} réponse${n.total>1?'s':''}</small></div></div>`).join('')}</div><p class=muted>Pas de classement compétitif : ces données servent au caviste à voir les notions acquises et celles à retravailler.</p></div>
     <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
-   ensurePostEventEmail().catch(()=>{});
    return;
  }
 
@@ -412,7 +416,6 @@ async function renderHostResults(){
    </div></div>
    <div class=card><h2>Classement complet</h2><table><tr><th>#</th><th>Joueur</th><th>Final</th><th>Brut</th><th>Indices</th><th>Efficacité</th></tr>${rows.map(r=>`<tr><td>${r.rank}</td><td>${esc(r.name)}</td><td><b>${r.adjusted}</b></td><td>${r.raw}</td><td>${r.hints}</td><td>${Math.round(r.efficiency*100)}%</td></tr>`).join("")}</table></div>
    <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Statistiques Challenge</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button> <button type="button" class="btn secondary" onclick="renderProfile()">📚 Historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>`;
-   ensurePostEventEmail().catch(()=>{});
    return;
  }
 
@@ -471,7 +474,6 @@ async function renderHostResults(){
  <div class=card><button type="button" class="btn secondary" onclick="renderHostStats()">📊 Voir les statistiques par bouteille</button> <button type="button" class="btn" onclick="renderPostEventReport()">📈 Rapport caviste & opportunités</button></div>
  <div class=card><button type="button" class="btn secondary" onclick="renderProfile()">📚 Mon historique</button> <button type="button" class="btn secondary" onclick="home()">Accueil</button></div>
  <div class=card><h2>Classement dégustateurs</h2><table><tr><th>#</th><th>Joueur</th><th>Total</th><th>Prix</th><th>Région</th><th>Cépages</th></tr>${rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}</td><td><b>${x.score}</b></td><td>${x.pricePts}</td><td>${x.regionPts}</td><td>${x.grapePts}</td></tr>`).join("")}</table></div>`;
- ensurePostEventEmail().catch(()=>{});
 }
 
 async function renderHostStats(){

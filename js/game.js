@@ -195,7 +195,18 @@ async function joinGame(){
  saveSession();subscribe();route();
 }
 
+let hostAnswerRealtimeTimer=null;
+
+function scheduleHostAnswerRefresh(delay=90){
+ if(hostAnswerRealtimeTimer)clearTimeout(hostAnswerRealtimeTimer);
+ hostAnswerRealtimeTimer=setTimeout(()=>{
+  hostAnswerRealtimeTimer=null;
+  if(role==="host"&&game?.status==="tasting"&&game?.phase==="answering")requestRoute();
+ },delay);
+}
+
 function subscribe(){
+ if(hostAnswerRealtimeTimer){clearTimeout(hostAnswerRealtimeTimer);hostAnswerRealtimeTimer=null;}
  if(channel)supabaseClient.removeChannel(channel);
  channel=supabaseClient.channel("game:"+game.id)
   .on("postgres_changes",{event:"*",schema:"public",table:"games",filter:"id=eq."+game.id},async()=>{const alive=await refreshGame();if(alive)requestRoute()})
@@ -220,11 +231,11 @@ async function handlePlayersChange(){
 
 async function handleAnswerRealtime(payload){
  if(role!=="host"||game?.status!=="tasting"||game?.phase!=="answering")return;
- // Découverte est un mode d’animation : le caviste doit voir évoluer les perceptions
- // et comparaisons pendant le verre, pas uniquement au moment de la validation finale.
- if(game.experience_mode==="discovery")return requestRoute();
+ // Découverte produit beaucoup d'écritures (étapes, sensations, quiz, comparaison, done).
+ // On regroupe les événements proches pour éviter des rendus asynchrones concurrents.
+ if(game.experience_mode==="discovery")return scheduleHostAnswerRefresh(90);
  if(payload?.new?.done!==true&&payload?.old?.done!==true)return;
- requestRoute();
+ scheduleHostAnswerRefresh(60);
 }
 
 async function refreshGame(){
