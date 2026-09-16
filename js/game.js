@@ -188,8 +188,14 @@ async function joinGame(){
  wineCache=null;answerCache.clear();
  role=game.host_id===user.id?"host":"player";
  if(role==="player"){
-   const p=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
+   let p=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
    if(p.error)return toast(p.error.message);
+   if(Boolean(p.data?.commercial_consent)!==commercialConsent){
+     const sync=await supabaseClient.rpc("set_commercial_consent",{p_game_id:game.id,p_consent:commercialConsent});
+     if(sync.error)return toast("Impossible d’enregistrer ton consentement : "+sync.error.message);
+     p=await supabaseClient.from("players").select("id,game_id,user_id,name,commercial_consent,commercial_consent_at,created_at").eq("game_id",game.id).eq("user_id",user.id).single();
+     if(p.error)return toast(p.error.message);
+   }
    player=p.data;
  }else player=null;
  saveSession();subscribe();route();

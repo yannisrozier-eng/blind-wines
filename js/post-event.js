@@ -119,7 +119,7 @@ async function loadPostEventReportData(){
    score=Math.min(100,Math.round(score));
    if(score<58)continue;
    const level=postEventAffinityLabel(score);
-   opportunities.push({user_id:p.user_id,name:p.name,email:contact.email||'',consent:Boolean(contact.commercial_consent),consent_at:contact.commercial_consent_at||null,wine_id:a.wine_id,wine:rv.name||`Vin ${w.position+1}`,region:regionLabel(rv.region),grapes:(rv.grapes||[]).join(' / '),price:Number(rv.price||0),estimated_price:a.price?Number(a.price):null,note,score,level,reasons:[...new Set(reasons)].slice(0,3),type:w.type});
+   opportunities.push({user_id:p.user_id,name:p.name,email:contact.email||'',consent:Boolean(p.commercial_consent),consent_at:p.commercial_consent_at||null,wine_id:a.wine_id,wine:rv.name||`Vin ${w.position+1}`,region:regionLabel(rv.region),grapes:(rv.grapes||[]).join(' / '),price:Number(rv.price||0),estimated_price:a.price?Number(a.price):null,note,score,level,reasons:[...new Set(reasons)].slice(0,3),type:w.type});
   }
  }
  opportunities.sort((a,b)=>b.score-a.score||b.note-a.note||a.name.localeCompare(b.name,'fr'));
@@ -133,7 +133,7 @@ async function loadPostEventReportData(){
   }
   return [...m.entries()].map(([name,x])=>({name,avg:x.sum/x.n,n:x.n})).filter(x=>x.n>=1).sort((a,b)=>b.avg-a.avg||b.n-a.n).slice(0,4);
  };
- const consented=players.filter(p=>contactByUser.get(p.user_id)?.commercial_consent);
+ const consented=players.filter(p=>Boolean(p.commercial_consent));
  const completed=players.filter(p=>(answersByUser.get(p.user_id)||[]).length>=Math.max(1,wines.length)).length;
  const strongest=opportunities.filter(o=>o.consent&&o.level.key==='strong');
  const good=opportunities.filter(o=>o.consent&&o.level.key==='good');
