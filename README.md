@@ -1,4 +1,4 @@
-# Blind Wine V4.6.2 — Full Reinstall
+# Blind Wine V4.6.3 — Full Reinstall
 
 Pack propre pour repartir de zéro sur le même projet Supabase et redéployer l'application.
 
@@ -41,3 +41,7 @@ Le ZIP est directement déployable. Upload son contenu à la racine du repo GitH
 
 ## Ordre exact
 `RESET_SUPABASE.sql` → éventuellement supprimer les comptes Auth de test → `supabase.sql` → config.js → GitHub/Vercel → hard refresh/PWA relaunch.
+
+
+## V4.6.3
+En mode Découverte, les notes sensorielles 1–5 sont mises à jour localement sans rerender complet de la page, supprimant le saut/vibration écran à chaque sélection. Aucun changement SQL.

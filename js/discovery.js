@@ -255,18 +255,31 @@ function discoveryMicroReveal(key,value,tip=''){
 
 function discoverySensoryMetric(label,key,a,tip=''){
  const meta=discoverySensoryScaleMeta(key),value=Number(a.scores?.[key]||0);
- return `<div class="section discovery-sensory-metric"><div class="sensory-head"><h3>${label}</h3>${value?`<span>${value}/5 · ${esc(meta.labels[value-1])}</span>`:''}</div>
+ return `<div class="section discovery-sensory-metric" data-discovery-metric="${esc(key)}"><div class="sensory-head"><h3>${label}</h3><span class="discovery-score-label">${value?`${value}/5 · ${esc(meta.labels[value-1])}`:''}</span></div>
   <div class="sensory-anchors"><small>${esc(meta.low)}</small><small>${esc(meta.high)}</small></div>
-  <div class="scale discovery-scale">${[1,2,3,4,5].map(n=>`<button type="button" aria-label="${esc(meta.labels[n-1])}" title="${esc(meta.labels[n-1])}" class="${value===n?'sel':''}" onclick="setDiscoveryScore('${a.wine_id||''}','${key}',${n})"><span>${n}</span><small>${esc(meta.labels[n-1])}</small></button>`).join('')}</div>
-  ${discoveryMicroReveal(key,value,tip)}
+  <div class="scale discovery-scale">${[1,2,3,4,5].map(n=>`<button type="button" aria-label="${esc(meta.labels[n-1])}" title="${esc(meta.labels[n-1])}" class="${value===n?'sel':''}" onclick="setDiscoveryScore('${a.wine_id||''}','${key}',${n},this)"><span>${n}</span><small>${esc(meta.labels[n-1])}</small></button>`).join('')}</div>
+  <div class="discovery-micro-reveal-slot">${discoveryMicroReveal(key,value,tip)}</div>
  </div>`;
 }
 
-async function setDiscoveryScore(wineId,key,n){
+async function setDiscoveryScore(wineId,key,n,button=null){
  if(game?.experience_mode!=='discovery')return;
+ const metric=button?.closest?.('.discovery-sensory-metric')||null;
+ if(metric){
+   metric.querySelectorAll('.discovery-scale button').forEach(b=>b.classList.toggle('sel',b===button));
+   const meta=discoverySensoryScaleMeta(key);
+   const label=metric.querySelector('.discovery-score-label');
+   if(label)label.textContent=`${n}/5 · ${meta.labels[n-1]}`;
+ }
  const a=await getAnswer(wineId),scores={...(a.scores||{}),[key]:n};
  const saved=await upsertAnswer(wineId,{scores});
- if(saved)renderPlayerTasting();
+ if(!saved&&metric){
+   // A failed save should not leave a misleading selected state.
+   const fresh=await getAnswer(wineId),current=Number(fresh?.scores?.[key]||0);
+   metric.querySelectorAll('.discovery-scale button').forEach((b,i)=>b.classList.toggle('sel',i+1===current));
+   const meta=discoverySensoryScaleMeta(key),label=metric.querySelector('.discovery-score-label');
+   if(label)label.textContent=current?`${current}/5 · ${meta.labels[current-1]}`:'';
+ }
 }
 
 function discoveryMissionText(goal){

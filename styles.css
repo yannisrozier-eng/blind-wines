@@ -1561,3 +1561,14 @@ body.blind-atlas-open{overflow:hidden}.blind-atlas-overlay{position:fixed;inset:
 .blind-icon-scale button:active{
   transform:none!important;
 }
+
+/* V4.6.3 — Discovery sensory controls: local updates only, no page re-render/jump */
+.discovery-sensory-metric .sensory-head .discovery-score-label{
+  min-height:1em;
+  white-space:nowrap;
+}
+.discovery-sensory-metric .discovery-scale button,
+.discovery-sensory-metric .discovery-scale button:active,
+.discovery-sensory-metric .discovery-scale button.sel{
+  transform:none!important;
+}
