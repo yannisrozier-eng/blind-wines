@@ -1541,3 +1541,23 @@ body.blind-atlas-open{overflow:hidden}.blind-atlas-overlay{position:fixed;inset:
 .commercial-person-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.commercial-person{padding:13px;border-radius:14px;background:#fff;border:1px solid rgba(0,0,0,.07)}.commercial-person-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.commercial-person-head>div>*{display:block}.commercial-person-head .opportunity-level{margin-top:4px;font-size:.76rem}.commercial-person-wine{margin-top:9px;font-weight:800}.commercial-person p{margin:7px 0;font-size:.8rem;color:#5f565a}.commercial-contact{font-size:.78rem;font-weight:700}.commercial-nurture{padding:12px 14px;border-radius:14px;background:#f7f7f8}.commercial-nurture summary{cursor:pointer;font-weight:800;margin-bottom:10px}
 .commercial-actions-list{display:grid;gap:10px}.commercial-actions-list>div{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:#faf7f8}.commercial-actions-list span{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:#6f243d;color:#fff;font-weight:900}.commercial-actions-list p{margin:0;font-weight:650}
 @media(max-width:720px){.commercial-hero{grid-template-columns:1fr;padding:19px}.commercial-hero-score{display:flex;align-items:center;justify-content:space-between;text-align:left;min-width:0}.commercial-hero-score strong{margin:0;font-size:1.9rem}.commercial-insight-grid,.commercial-wine-grid,.commercial-preference-grid,.commercial-person-grid{grid-template-columns:1fr}.commercial-section-title{align-items:flex-start}.commercial-section-title .pill{flex:0 0 auto}}
+
+/* V4.6.2 — Stable tasting scales: no movement / shake on 1–5 selection */
+.scale button,
+.discovery-scale button,
+.blind-icon-scale button{
+  transform:none!important;
+  transition:background-color .12s ease,border-color .12s ease,color .12s ease,box-shadow .12s ease!important;
+  -webkit-tap-highlight-color:transparent;
+}
+.scale button.sel,
+.chip.sel,
+.discovery-scale button.sel,
+.blind-icon-scale button.sel{
+  transform:none!important;
+}
+.scale button:active,
+.discovery-scale button:active,
+.blind-icon-scale button:active{
+  transform:none!important;
+}

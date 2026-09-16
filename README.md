@@ -1,21 +1,43 @@
-# Blind Wine V4.6.0
+# Blind Wine V4.6.2 — Full Reinstall
 
-Version actuelle centrée sur :
-- expérience joueur Blind / Discovery / Challenge,
-- rapport caviste post-soirée orienté commercial,
-- consentement commercial explicite,
-- export CSV CRM,
-- email rapide via `mailto:`,
-- email design HTML via fichier `.eml`, sans Resend ni domaine.
+Pack propre pour repartir de zéro sur le même projet Supabase et redéployer l'application.
 
-## Installation neuve
-1. Exécuter `supabase.sql` dans Supabase SQL Editor.
-2. Renseigner `config.js` avec l'URL Supabase et la publishable key.
-3. Déployer les fichiers à la racine sur GitHub/Vercel.
-4. Configurer les URLs Magic Link dans Supabase Auth.
+## 1 — Nettoyer Supabase
+Dans **Supabase → SQL Editor → New query** :
+1. Ouvre `RESET_SUPABASE.sql`
+2. Copie tout
+3. Clique **Run**
 
-## Mise à jour depuis V4.5.0
-Si le RPC de consentement V4.5.1 n'a jamais été installé, exécuter `MIGRATION_V4.5.1.sql`.
-Aucun SQL supplémentaire n'est requis pour la V4.6.0.
+Ce reset supprime toutes les données et objets **Blind Wine** du schéma `public`.
+Il conserve volontairement **Authentication > Users** afin de ne pas casser la configuration Auth du projet.
 
-Voir `README_V4.6.0.md` pour le détail du rapport commercial.
+### Si tu veux aussi supprimer tous les comptes de test
+Dans **Supabase → Authentication → Users**, supprime les utilisateurs de test avant l'étape 2.
+Ne supprime pas le projet Supabase lui-même.
+
+## 2 — Réinstaller le schéma complet
+Toujours dans **SQL Editor → New query** :
+1. Ouvre `supabase.sql`
+2. Copie tout
+3. Clique **Run**
+
+`supabase.sql` est la seule source de vérité. Aucune ancienne migration n'est nécessaire.
+Il recrée notamment : tables, contraintes, RLS, RPC, profils, consentement commercial et récupération sécurisée des emails consentis.
+
+## 3 — Vérifier Auth
+Dans **Authentication → URL Configuration** :
+- Site URL : `https://blind-wines.vercel.app`
+- Redirect URLs : ajoute `https://blind-wines.vercel.app/**`
+
+## 4 — Configurer l'application
+Dans `config.js`, renseigne uniquement :
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+
+Ne mets jamais de `service_role` dans le frontend.
+
+## 5 — GitHub / Vercel
+Le ZIP est directement déployable. Upload son contenu à la racine du repo GitHub, puis laisse Vercel redéployer.
+
+## Ordre exact
+`RESET_SUPABASE.sql` → éventuellement supprimer les comptes Auth de test → `supabase.sql` → config.js → GitHub/Vercel → hard refresh/PWA relaunch.

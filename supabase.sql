@@ -1,5 +1,5 @@
--- BLIND WINE V4.4.1 — FRESH INSTALL / SCHÉMA COMPLET
--- À exécuter UNE SEULE FOIS dans Supabase > SQL Editor sur le nouveau projet.
+-- BLIND WINE V4.6.2 — FRESH INSTALL / SCHÉMA COMPLET
+-- À exécuter après RESET_SUPABASE.sql dans Supabase > SQL Editor.
 -- Ce fichier contient directement le schéma complet, les contraintes, triggers, RLS,
 -- RPC, droits et ajouts Découverte V3.7/V3.8/V3.8.1. Aucune migration intermédiaire requise.
 -- Le script reste volontairement idempotent sur les créations/ajouts principaux afin de faciliter un réalignement.
@@ -1035,7 +1035,19 @@ begin
   end if;
   return query
   select p.user_id,p.name,
-         case when p.commercial_consent then u.email else null end,
+         case when p.commercial_consent then
+           nullif(btrim(coalesce(
+             u.email,
+             u.raw_user_meta_data->>'email',
+             (select i.identity_data->>'email'
+                from auth.identities i
+               where i.user_id=p.user_id
+                 and nullif(btrim(i.identity_data->>'email'),'') is not null
+               order by i.created_at asc
+               limit 1),
+             ''
+           )), '')
+         else null end,
          p.commercial_consent,p.commercial_consent_at
   from public.players p
   left join auth.users u on u.id=p.user_id

@@ -1,4 +1,4 @@
-/* Blind Wine V4.6 — Commercial post-event report, CRM export and local/design email composer. */
+/* Blind Wine V4.6.1 — Commercial report + robust consented email recovery. */
 'use strict';
 
 
@@ -65,6 +65,12 @@ async function loadPostEventReportData(){
  const revealByWine=new Map(reveals.map(r=>[r.wine_id,r]));
  const wineById=new Map(wines.map(w=>[w.id,w]));
  const contactByUser=new Map(contacts.map(c=>[c.user_id,c]));
+ for(const p of players){
+  const c=contactByUser.get(p.user_id);
+  if(Boolean(p.commercial_consent)&&!String(c?.email||'').trim()){
+   warnings.push(`Consentement enregistré pour ${p.name}, mais aucune adresse email n’a été retrouvée dans Supabase Auth.`);
+  }
+ }
  const answersByUser=new Map(),answersByWine=new Map();
  for(const a of answers){
   if(a.user_id===game.host_id)continue;
@@ -185,7 +191,7 @@ function postEventOpportunityCards(items,limit=8){
   <div class=commercial-person-wine>🍷 ${esc(o.wine)}</div>
   <div class="small muted">${esc(o.region)}${o.grapes?` · ${esc(o.grapes)}`:''}</div>
   <p>${esc(o.reasons.join(' · ')||'bonne appréciation')}</p>
-  <div class=commercial-contact>${o.consent&&o.email?`📩 ${esc(o.email)}`:'🔒 Email non partagé'}</div>
+  <div class=commercial-contact>${o.consent&&o.email?`📩 ${esc(o.email)}`:o.consent?'⚠️ Consentement OK — email Auth introuvable':'🔒 Email non partagé'}</div>
  </article>`).join('');
 }
 function postEventEmailHtml(d){
@@ -194,7 +200,7 @@ function postEventEmailHtml(d){
  const opp=d.opportunities.slice(0,12);
  const cell=(label,value)=>`<td style="width:25%;padding:14px 10px;border:1px solid #eadde2;border-radius:12px;background:#ffffff;text-align:center"><div style="font-size:12px;color:#756970">${label}</div><div style="font-size:24px;font-weight:800;color:#4f172b;margin-top:5px">${value}</div></td>`;
  const rows=opp.map(o=>`<tr>
-   <td style="padding:10px;border-bottom:1px solid #eee"><b>${esc(o.name)}</b><br><span style="font-size:12px;color:#777">${o.consent&&o.email?esc(o.email):'Email non partagé'}</span></td>
+   <td style="padding:10px;border-bottom:1px solid #eee"><b>${esc(o.name)}</b><br><span style="font-size:12px;color:#777">${o.consent&&o.email?esc(o.email):o.consent?'Consentement OK — email Auth introuvable':'Email non partagé'}</span></td>
    <td style="padding:10px;border-bottom:1px solid #eee">${esc(o.wine)}<br><span style="font-size:12px;color:#777">${esc(o.region)}</span></td>
    <td style="padding:10px;border-bottom:1px solid #eee;text-align:center"><b>${o.note}/10</b></td>
    <td style="padding:10px;border-bottom:1px solid #eee">${o.level.icon} <b>${esc(o.level.label)}</b><br><span style="font-size:12px;color:#777">${esc(o.reasons.join(' · ')||'bonne note')}</span></td>
@@ -367,7 +373,7 @@ function postEventMailText(d){
  lines.push('OPPORTUNITÉS PAR PARTICIPANT');
  const maxMailRows=20;
  for(const o of d.opportunities.slice(0,maxMailRows)){
-  const contact=o.consent&&o.email?o.email:'Email non partagé';
+  const contact=o.consent&&o.email?o.email:o.consent?'Consentement OK — email Auth introuvable':'Email non partagé';
   lines.push(`• ${o.name} — ${o.wine} — ${o.note}/10 — ${o.level.label} — ${contact}`);
   if(o.reasons.length)lines.push(`  ${o.reasons.join(' · ')}`);
  }
