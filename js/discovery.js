@@ -164,6 +164,13 @@ function discoveryFocusHtml(goal,step){
 
 function discoveryProgress(step){return `<div class=discovery-progress>${[0,1,2,3,4].map(i=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>`}
 
+function scrollDiscoveryStageTop(){
+ requestAnimationFrame(()=>{
+  try{window.scrollTo({top:0,left:0,behavior:"smooth"})}
+  catch(_){window.scrollTo(0,0)}
+ });
+}
+
 async function setDiscoveryStep(wineId,step){
  const target=Math.max(0,Math.min(4,step));
  const a=await getAnswer(wineId);
@@ -181,14 +188,20 @@ async function setDiscoveryStep(wineId,step){
    }
  }
  const saved=await upsertAnswer(wineId,{discovery_step:target});
- if(saved)renderPlayerTasting();
+ if(saved){
+  await renderPlayerTasting();
+  scrollDiscoveryStageTop();
+ }
 }
 
 async function chooseDiscoveryQuiz(wineId,index){
  const a=await getAnswer(wineId);
  if(Number.isInteger(a.quiz_choice))return toast("Ta première réponse au mini-quiz est déjà verrouillée.");
- await upsertAnswer(wineId,{quiz_choice:index});
- renderPlayerTasting();
+ const saved=await upsertAnswer(wineId,{quiz_choice:index});
+ if(saved){
+  await renderPlayerTasting();
+  scrollDiscoveryStageTop();
+ }
 }
 
 function sensoryLabel(v){return v?`${v}/5`:"—"}
@@ -218,7 +231,7 @@ async function setDiscoveryComparison(wineId,metric,choice,button=null){
  if(!['previous','current','similar'].includes(choice))return;
  if(button){button.parentElement?.querySelectorAll('button').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');}
  const saved=await upsertAnswer(wineId,{discovery_compare:{metric,choice}});
- if(!saved)renderPlayerTasting();
+ if(saved)await renderPlayerTasting();
 }
 
 
